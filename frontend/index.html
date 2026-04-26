@@ -1,9 +1,51 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-    <title>TechShopHub</title>
+    <meta charset="UTF-8">
+    <title>TechShopHub - Login</title>
+    <link rel="stylesheet" href="res/css/style.css">
+    <script src="js/script.js" defer></script>
 </head>
 <body>
-    <h1>Welcome to TechShopHub</h1>
+    <h1>Willkommen bei TechShopHub</h1>
+
+    <div id="auth-status" class="status-box">
+        <strong>Status:</strong> <span id="status-text">Nicht eingeloggt</span>
+        <button id="logoutBtn" type="button" hidden>Logout</button>
+    </div>
+
+    <div id="login-container">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <label for="login_identifier">Benutzername oder E-Mail:</label><br>
+            <input
+                type="text"
+                id="login_identifier"
+                name="login_identifier"
+                autocomplete="username"
+                minlength="3"
+                required
+            ><br><br>
+
+            <label for="login_password">Passwort:</label><br>
+            <input
+                type="password"
+                id="login_password"
+                name="login_password"
+                autocomplete="current-password"
+                minlength="8"
+                required
+            ><br><br>
+
+            <label>
+                <input type="checkbox" id="remember_me" name="remember_me"> Login merken
+            </label><br><br>
+
+            <button type="submit">Einloggen</button>
+        </form>
+        <p>Noch kein Konto? <a href="./sites/register.html">Hier registrieren</a></p>
+    </div>
+
+    <div id="message-box"></div>
 </body>
 </html>
