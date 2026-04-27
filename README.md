@@ -51,3 +51,4 @@ while providing admins with tools to manage the store.
 
 - Add one user manually in MySQL with `is_admin = 1` (template is inside `backend/config/schema.sql`).
 - Login status shows role information (`Administrator` vs `User`) on `frontend/index.html`.
+

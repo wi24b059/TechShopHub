@@ -40,7 +40,7 @@ INSERT INTO users (
     'Wien',
     'admin@techshophub.local',
     'admin',
-    '$2y$10$YourHashedPasswordHere',
+    '$2y$10$5mDWoOY3byIBt7MBVgPdR.TNCrZqwOCfE1Fnbs3y7l05prLpmjoJS',
     'Invoice',
     1
 );
