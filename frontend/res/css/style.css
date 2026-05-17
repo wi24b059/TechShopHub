@@ -1,37 +1,13 @@
-body {
-    font-family: Arial, sans-serif;
-    margin: 2rem;
-}
+/*
+ * style.css – custom overrides on top of Bootstrap
+ *
+ * Bootstrap handles almost all layout, forms, buttons and cards.
+ * The only thing Bootstrap's card-img-top doesn't do is fix a
+ * consistent image height – that's all we add here.
+ */
 
-#login-container,
-form {
-    max-width: 460px;
-}
-
-label {
-    font-weight: 600;
-}
-
-input,
-select,
-button {
-    margin-top: 0.25rem;
-    margin-bottom: 0.5rem;
-}
-
-.status-box {
-    margin: 0 0 1.25rem;
-    padding: 0.75rem;
-    border: 1px solid #cccccc;
-    border-radius: 6px;
-    max-width: 460px;
-    background: #f7f7f7;
-}
-
-#logoutBtn {
-    margin-left: 0.75rem;
-}
-
-#message-box {
-    margin-top: 1rem;
+/* Keep all product images the same height so cards line up neatly. */
+.product-img {
+    height: 160px;
+    object-fit: cover;   /* crop/scale the image without distorting it */
 }
