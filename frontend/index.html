@@ -3,136 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <title>TechShopHub</title>
+    <!-- Bootstrap 5 – handles almost all layout and component styles -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="res/css/style.css">
     <script src="js/script.js" defer></script>
 </head>
-<body>
+<body class="bg-light">
 
-    <!-- =====================================================
-         AUTH STATUS BAR
-         Shows who is logged in and provides the logout button.
-         Updated automatically by JavaScript on page load.
-    ====================================================== -->
-    <header>
-        <h1>🛒 TechShopHub</h1>
-        <div id="auth-status" class="status-box">
-            <strong>Status:</strong>
-            <span id="status-text">Nicht eingeloggt</span>
-            <button id="logoutBtn" type="button" hidden>Logout</button>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark px-3 mb-4">
+        <span class="navbar-brand fw-bold">🛒 TechShopHub</span>
+        <div class="d-flex align-items-center gap-2">
+            <span id="status-text" class="text-white-50 small"></span>
+            <a id="loginLink" href="sites/login.html" class="btn btn-sm btn-outline-light">Login</a>
+            <button id="logoutBtn" class="btn btn-sm btn-danger" hidden>Logout</button>
         </div>
-    </header>
+    </nav>
 
-    <main>
+    <div class="container-lg">
 
-        <!-- =====================================================
-             SHOP SECTION
-             Visible to everyone – no login required to browse.
-        ====================================================== -->
+        <!-- ================================================
+             SHOP – visible to everyone
+        ================================================= -->
         <section id="shop">
-            <h2>Produkte</h2>
 
-            <!-- Search bar: triggers a live AJAX search as the user types -->
-            <input
-                type="search"
-                id="search-input"
-                placeholder="Produkte suchen…"
-                autocomplete="off"
-            >
+            <!-- Search -->
+            <input id="search-input" type="search" class="form-control mb-3"
+                   placeholder="🔍 Produkte suchen…" autocomplete="off">
 
-            <!-- Category buttons: clicking one loads that category's products -->
-            <nav id="category-nav">
-                <button class="category-btn active" data-category-id="1">💻 Laptops</button>
-                <button class="category-btn"        data-category-id="2">🎧 Headsets</button>
-                <button class="category-btn"        data-category-id="3">🖥️ PCs</button>
+            <!-- Category buttons -->
+            <nav id="category-nav" class="d-flex flex-wrap gap-2 mb-4">
+                <button class="btn btn-dark category-btn"         data-category-id="1">💻 Laptops</button>
+                <button class="btn btn-outline-dark category-btn" data-category-id="2">🎧 Headsets</button>
+                <button class="btn btn-outline-dark category-btn" data-category-id="3">🖥️ PCs</button>
             </nav>
 
             <!-- Product cards are injected here by JavaScript -->
-            <div id="product-grid">
-                <p class="loading-text">Produkte werden geladen…</p>
+            <div id="product-grid" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+                <div class="col-12 text-muted fst-italic">Produkte werden geladen…</div>
+            </div>
+
+        </section>
+
+        <!-- ================================================
+             ADMIN PANEL – shown only for admins
+        ================================================= -->
+        <section id="admin-panel" class="mt-5" hidden>
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white fw-bold">
+                    ⚙️ Neues Produkt hinzufügen
+                </div>
+                <div class="card-body">
+                    <form id="createProductForm" enctype="multipart/form-data">
+                        <div class="row g-3">
+
+                            <div class="col-md-6">
+                                <label class="form-label" for="prod_category">Kategorie</label>
+                                <select id="prod_category" name="category_id" class="form-select" required>
+                                    <option value="">Bitte auswählen</option>
+                                    <option value="1">Laptops</option>
+                                    <option value="2">Headsets</option>
+                                    <option value="3">PCs</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label" for="prod_name">Name</label>
+                                <input type="text" id="prod_name" name="name"
+                                       class="form-control" maxlength="150" required>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label" for="prod_description">Beschreibung</label>
+                                <textarea id="prod_description" name="description"
+                                          class="form-control" rows="2" required></textarea>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label" for="prod_price">Preis (€)</label>
+                                <input type="number" id="prod_price" name="price"
+                                       class="form-control" step="0.01" min="0" required>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label" for="prod_rating">Bewertung (0–5)</label>
+                                <input type="number" id="prod_rating" name="rating"
+                                       class="form-control" step="0.1" min="0" max="5" value="0">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label" for="prod_image">Produktfoto</label>
+                                <input type="file" id="prod_image" name="product_image"
+                                       class="form-control" accept="image/*" required>
+                            </div>
+
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-danger">
+                                    Produkt speichern
+                                </button>
+                            </div>
+
+                        </div>
+                    </form>
+                    <div id="admin-message-box" class="mt-2"></div>
+                </div>
             </div>
         </section>
 
-        <!-- =====================================================
-             ADMIN PANEL
-             Hidden by default. JavaScript reveals it when the
-             session reports is_admin === true.
-        ====================================================== -->
-        <section id="admin-panel" hidden>
-            <h2>⚙️ Neues Produkt hinzufügen</h2>
+    </div><!-- /container -->
 
-            <!-- enctype is required so the browser sends the file correctly -->
-            <form id="createProductForm" enctype="multipart/form-data">
-
-                <label for="prod_category">Kategorie:</label>
-                <select id="prod_category" name="category_id" required>
-                    <option value="">Bitte auswählen</option>
-                    <option value="1">Laptops</option>
-                    <option value="2">Headsets</option>
-                    <option value="3">PCs</option>
-                </select>
-
-                <label for="prod_name">Name:</label>
-                <input type="text" id="prod_name" name="name" maxlength="150" required>
-
-                <label for="prod_description">Beschreibung:</label>
-                <textarea id="prod_description" name="description" rows="3" required></textarea>
-
-                <label for="prod_price">Preis (€):</label>
-                <input type="number" id="prod_price" name="price" step="0.01" min="0" required>
-
-                <label for="prod_rating">Bewertung (0–5):</label>
-                <input type="number" id="prod_rating" name="rating" step="0.1" min="0" max="5" value="0">
-
-                <label for="prod_image">Produktfoto:</label>
-                <input type="file" id="prod_image" name="product_image" accept="image/*" required>
-
-                <button type="submit">Produkt speichern</button>
-            </form>
-
-            <div id="admin-message-box"></div>
-        </section>
-
-        <!-- =====================================================
-             LOGIN FORM
-             Always visible so users can log in to access admin features.
-        ====================================================== -->
-        <section id="login-container">
-            <h2>Login</h2>
-            <form id="loginForm">
-                <label for="login_identifier">Benutzername oder E-Mail:</label>
-                <input
-                    type="text"
-                    id="login_identifier"
-                    name="login_identifier"
-                    autocomplete="username"
-                    minlength="3"
-                    required
-                >
-
-                <label for="login_password">Passwort:</label>
-                <input
-                    type="password"
-                    id="login_password"
-                    name="login_password"
-                    autocomplete="current-password"
-                    minlength="8"
-                    required
-                >
-
-                <label class="checkbox-label">
-                    <input type="checkbox" id="remember_me" name="remember_me">
-                    Login merken
-                </label>
-
-                <button type="submit">Einloggen</button>
-            </form>
-            <p>Noch kein Konto? <a href="./sites/register.html">Hier registrieren</a></p>
-        </section>
-
-    </main>
-
-    <!-- Global message box used by showMessage() in script.js -->
-    <div id="message-box"></div>
+    <div id="message-box" class="container-lg mt-2"></div>
 
 </body>
 </html>

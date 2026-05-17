@@ -1,63 +1,58 @@
 // ============================================================
 // script.js
 // ------------------------------------------------------------
-// This file drives the entire frontend:
-//   - User authentication (login, logout, session status)
-//   - Product browsing by category
-//   - Live product search
-//   - Admin: create a new product with image upload
+// Shared script used by all three pages:
+//   index.html   → shop page
+//   sites/login.html    → login page
+//   sites/register.html → registration page
 //
-// All server communication is done via the fetch() API
-// (AJAX), so the page never fully reloads.
+// The code checks which page it's on by looking for specific
+// HTML elements (e.g. does #loginForm exist?).
 // ============================================================
 
 
 // ---- API URL -----------------------------------------------
-// Points to our single PHP backend file.
-// getApiUrl() works out the correct URL regardless of where
-// the project is hosted.
 const API_URL = getApiUrl();
 
 
 // ---- DOM References ----------------------------------------
-// We grab these elements once at the top so every function
-// below can use them without calling getElementById() again.
-const loginForm        = document.getElementById('loginForm');
-const registerForm     = document.getElementById('registerForm');
-const logoutBtn        = document.getElementById('logoutBtn');
-const searchInput      = document.getElementById('search-input');
-const categoryNav      = document.getElementById('category-nav');
-const productGrid      = document.getElementById('product-grid');
-const adminPanel       = document.getElementById('admin-panel');
+// These might be null if we're on a different page – that's fine,
+// we check before using them.
+const loginForm         = document.getElementById('loginForm');
+const registerForm      = document.getElementById('registerForm');
+const logoutBtn         = document.getElementById('logoutBtn');
+const loginLink         = document.getElementById('loginLink');
+const searchInput       = document.getElementById('search-input');
+const categoryNav       = document.getElementById('category-nav');
+const productGrid       = document.getElementById('product-grid');
+const adminPanel        = document.getElementById('admin-panel');
 const createProductForm = document.getElementById('createProductForm');
 
 
-// ---- Shop State --------------------------------------------
-// Remember which category is currently shown so we can
-// refresh it after adding a new product.
-let activeCategoryId = 1;  // Default: Laptops (matches id in the DB)
-
-// Used by the debounce logic in the search handler (see below).
-let searchTimer = null;
+// ---- Shop State -------------------------------------------
+let activeCategoryId = 1;   // Start with Laptops
+let searchTimer      = null; // Used for debouncing the search input
 
 
 // ============================================================
-// PAGE INITIALISATION
+// PAGE-SPECIFIC INITIALISATION
 // ============================================================
 
-// On the main page (index.html) initialise everything.
-if (loginForm) {
-    // Check who is logged in (updates the status bar + admin panel visibility).
-    loadSessionStatus();
-
-    // Load the default category (Laptops) right away so the shop
-    // is populated before the user does anything.
-    loadProducts(activeCategoryId);
+if (productGrid) {
+    // ---- We are on the SHOP PAGE (index.html) ----
+    loadSessionStatus();          // Update navbar (show username / login button)
+    loadProducts(activeCategoryId); // Load default category straight away
 }
 
-// On the registration page we only need the form handler below.
+if (loginForm) {
+    // ---- We are on the LOGIN PAGE ----
+    // If the user is already logged in, send them to the shop immediately.
+    redirectIfLoggedIn();
+}
+
 if (registerForm) {
-    // Nothing extra to initialise.
+    // ---- We are on the REGISTER PAGE ----
+    // Nothing special needed on load.
 }
 
 
@@ -65,10 +60,10 @@ if (registerForm) {
 // EVENT LISTENERS
 // ============================================================
 
-// ---- Login form --------------------------------------------
+// ---- Login form (login.html) --------------------------------
 if (loginForm) {
     loginForm.addEventListener('submit', function (e) {
-        e.preventDefault();  // Prevent the default HTML form submit (page reload).
+        e.preventDefault();
 
         const identifier = document.getElementById('login_identifier').value.trim();
         const password   = document.getElementById('login_password').value;
@@ -87,14 +82,14 @@ if (loginForm) {
 
         sendJsonRequest(data).then(result => {
             if (result.status === 'success') {
-                // Refresh the status bar and show/hide the admin panel.
-                loadSessionStatus();
+                // Login worked → go to the shop page.
+                window.location.href = getShopUrl();
             }
         });
     });
 }
 
-// ---- Registration form -------------------------------------
+// ---- Registration form (register.html) ----------------------
 if (registerForm) {
     registerForm.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -102,8 +97,6 @@ if (registerForm) {
         const pwd1 = document.getElementById('reg_pwd1').value;
         const pwd2 = document.getElementById('reg_pwd2').value;
 
-        // Client-side password checks (the server validates again, but
-        // giving feedback immediately is better UX).
         if (pwd1 !== pwd2) {
             showMessage('Die Passwörter stimmen nicht überein!', 'error');
             return;
@@ -131,41 +124,42 @@ if (registerForm) {
 
         sendJsonRequest(data).then(result => {
             if (result.status === 'success') {
-                // Short delay so the user can read the success message,
-                // then redirect to the login page.
+                // Registration done → redirect to login after a short delay.
                 setTimeout(() => {
-                    window.location.href = '../index.html';
+                    window.location.href = 'login.html';
                 }, 900);
             }
         });
     });
 }
 
-// ---- Logout button -----------------------------------------
+// ---- Logout button (index.html) -----------------------------
 if (logoutBtn) {
     logoutBtn.addEventListener('click', function () {
         sendJsonRequest({ action: 'logout' }).then(result => {
             if (result.status === 'success') {
-                loadSessionStatus();
+                loadSessionStatus(); // Refresh navbar
             }
         });
     });
 }
 
-// ---- Category navigation -----------------------------------
-// When the user clicks a category button, load that category's products.
+// ---- Category navigation (index.html) -----------------------
 if (categoryNav) {
     categoryNav.addEventListener('click', function (e) {
-        // Make sure the click was on a button, not the <nav> itself.
         if (e.target.tagName !== 'BUTTON') return;
 
         const categoryId = parseInt(e.target.dataset.categoryId, 10);
 
-        // Highlight the clicked button and remove highlight from others.
-        categoryNav.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
-        e.target.classList.add('active');
+        // Toggle Bootstrap button styles: filled = active, outline = inactive.
+        categoryNav.querySelectorAll('.category-btn').forEach(btn => {
+            btn.classList.remove('btn-dark');
+            btn.classList.add('btn-outline-dark');
+        });
+        e.target.classList.remove('btn-outline-dark');
+        e.target.classList.add('btn-dark');
 
-        // Clear the search box – we're now browsing by category instead.
+        // Clear search so we show the full category.
         if (searchInput) searchInput.value = '';
 
         activeCategoryId = categoryId;
@@ -173,30 +167,26 @@ if (categoryNav) {
     });
 }
 
-// ---- Live search -------------------------------------------
-// As the user types, we wait 300 ms before sending a request.
-// This "debounce" prevents sending a request for every single keystroke.
+// ---- Live search with debounce (index.html) -----------------
+// Debounce = wait 300ms after the user stops typing before searching.
+// Without debounce we would fire a request for every single keystroke.
 if (searchInput) {
     searchInput.addEventListener('input', function () {
         const term = searchInput.value.trim();
 
-        // Cancel the previous timer so we only search after the user stops typing.
         clearTimeout(searchTimer);
 
         searchTimer = setTimeout(() => {
             if (term.length >= 2) {
-                // Search across all categories.
                 searchProducts(term);
             } else if (term.length === 0) {
-                // The user cleared the search field → go back to the active category.
                 loadProducts(activeCategoryId);
             }
-            // If 1 character: too short to be useful, do nothing.
         }, 300);
     });
 }
 
-// ---- Admin: create product form ----------------------------
+// ---- Admin create-product form (index.html) -----------------
 if (createProductForm) {
     createProductForm.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -209,180 +199,119 @@ if (createProductForm) {
 // PRODUCT FUNCTIONS
 // ============================================================
 
-// ------------------------------------------------------------
-// loadProducts(categoryId)
-// Fetch all products for a given category from the backend
-// and render them on the page.
-// ------------------------------------------------------------
 function loadProducts(categoryId) {
-    // Show a loading message while we wait for the server.
-    setProductGridContent('<p class="loading-text">Produkte werden geladen…</p>');
+    setProductGridContent('<div class="col-12 text-muted fst-italic">Produkte werden geladen…</div>');
 
-    sendJsonRequest({ action: 'getProducts', categoryId: categoryId }, false)
-        .then(result => {
-            if (result.status === 'success') {
-                renderProducts(result.products);
-            } else {
-                setProductGridContent('<p class="error-text">Produkte konnten nicht geladen werden.</p>');
-            }
-        });
+    sendJsonRequest({ action: 'getProducts', categoryId }, false).then(result => {
+        if (result.status === 'success') {
+            renderProducts(result.products);
+        } else {
+            setProductGridContent('<div class="col-12 text-danger">Produkte konnten nicht geladen werden.</div>');
+        }
+    });
 }
 
-// ------------------------------------------------------------
-// searchProducts(term)
-// Search products by name or description and show results.
-// ------------------------------------------------------------
 function searchProducts(term) {
-    setProductGridContent('<p class="loading-text">Suche läuft…</p>');
+    setProductGridContent('<div class="col-12 text-muted fst-italic">Suche läuft…</div>');
 
-    sendJsonRequest({ action: 'getProducts', searchTerm: term }, false)
-        .then(result => {
-            if (result.status === 'success') {
-                renderProducts(result.products);
-            } else {
-                setProductGridContent('<p class="error-text">Suche fehlgeschlagen.</p>');
-            }
-        });
+    sendJsonRequest({ action: 'getProducts', searchTerm: term }, false).then(result => {
+        if (result.status === 'success') {
+            renderProducts(result.products);
+        } else {
+            setProductGridContent('<div class="col-12 text-danger">Suche fehlgeschlagen.</div>');
+        }
+    });
 }
 
-// ------------------------------------------------------------
-// renderProducts(products)
-// Takes an array of product objects and builds the product
-// cards in the #product-grid container.
-// ------------------------------------------------------------
 function renderProducts(products) {
     if (!productGrid) return;
 
     if (products.length === 0) {
-        setProductGridContent('<p class="empty-text">Keine Produkte gefunden.</p>');
+        setProductGridContent('<div class="col-12 text-muted fst-italic">Keine Produkte gefunden.</div>');
         return;
     }
 
-    // Build one card per product, then join them into one HTML string.
-    const cardsHtml = products.map(product => buildProductCard(product)).join('');
-    productGrid.innerHTML = cardsHtml;
+    // Build all cards and put them directly into the grid container.
+    productGrid.innerHTML = products.map(p => buildProductCard(p)).join('');
 }
 
-// ------------------------------------------------------------
-// buildProductCard(product)
-// Returns the HTML string for a single product card.
-// The product object comes directly from the database row.
-// ------------------------------------------------------------
+// Builds a Bootstrap card inside a grid column.
+// Each card shows: image, name, category, price, rating.
 function buildProductCard(product) {
-    // Format the price with two decimal places and a € sign.
-    const price = parseFloat(product.price).toFixed(2);
-
-    // Build a star display, e.g. "4.5 ★"
+    const price  = parseFloat(product.price).toFixed(2);
     const rating = parseFloat(product.rating).toFixed(1);
     const stars  = buildStarRating(parseFloat(product.rating));
 
-    // Use a placeholder if the image path is empty or the image fails to load.
-    // The onerror attribute switches to the placeholder automatically.
-    const imgSrc     = product.image_path || '';
-    const placeholder = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'150\'%3E%3Crect width=\'200\' height=\'150\' fill=\'%23eee\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23aaa\' font-size=\'14\'%3EKein Bild%3C/text%3E%3C/svg%3E';
+    // Inline SVG placeholder shown when the real image is missing or fails to load.
+    const placeholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='150'%3E%3Crect width='200' height='150' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%236c757d' font-size='13'%3EKein Bild%3C/text%3E%3C/svg%3E";
 
     return `
-        <article class="product-card">
-            <img
-                src="${escapeHtml(imgSrc)}"
-                alt="${escapeHtml(product.name)}"
-                class="product-image"
-                onerror="this.src='${placeholder}'"
-            >
-            <div class="product-info">
-                <h3 class="product-name">${escapeHtml(product.name)}</h3>
-                <p class="product-category">${escapeHtml(product.category_name || '')}</p>
-                <p class="product-price">€ ${escapeHtml(price)}</p>
-                <p class="product-rating" title="Bewertung: ${rating} von 5">${stars} ${rating}</p>
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <img src="${escapeHtml(product.image_path || '')}"
+                     alt="${escapeHtml(product.name)}"
+                     class="card-img-top product-img"
+                     onerror="this.src='${placeholder}'">
+                <div class="card-body d-flex flex-column">
+                    <h6 class="card-title mb-1">${escapeHtml(product.name)}</h6>
+                    <p class="text-muted small mb-1">${escapeHtml(product.category_name || '')}</p>
+                    <p class="text-warning mb-1" title="${rating} von 5">${stars} ${rating}</p>
+                    <p class="fw-bold mt-auto mb-0">€ ${escapeHtml(price)}</p>
+                </div>
             </div>
-        </article>
+        </div>
     `;
 }
 
-// ------------------------------------------------------------
-// buildStarRating(rating)
-// Converts a numeric rating (0–5) into star characters.
-// Example: 4.5 → "★★★★½"
-// ------------------------------------------------------------
+// Turns a number like 4.5 into "★★★★½☆".
 function buildStarRating(rating) {
     let stars = '';
     for (let i = 1; i <= 5; i++) {
-        if (rating >= i) {
-            stars += '★';         // Full star
-        } else if (rating >= i - 0.5) {
-            stars += '½';         // Half star
-        } else {
-            stars += '☆';         // Empty star
-        }
+        if (rating >= i)        stars += '★';
+        else if (rating >= i - 0.5) stars += '½';
+        else                    stars += '☆';
     }
     return stars;
 }
 
-// ------------------------------------------------------------
-// submitCreateProductForm()
-// Collects the admin form data (including the image file) and
-// sends it to the backend using FormData instead of JSON.
-//
-// Why FormData and not JSON.stringify?
-// Because JSON cannot carry binary file data. FormData is the
-// standard way to send files over HTTP.
-// ------------------------------------------------------------
+// Sends the admin create-product form using FormData so the image file is included.
 async function submitCreateProductForm() {
-    const form = createProductForm;
+    const form      = createProductForm;
+    const submitBtn = form.querySelector('button[type="submit"]');
 
-    // FormData automatically collects ALL input fields in the form,
-    // including the selected file from <input type="file">.
+    // Collect all form fields (including the file) into a FormData object.
     const formData = new FormData(form);
-
-    // Tell the backend which action to run.
     formData.append('action', 'createProduct');
 
-    // Show a loading state on the button.
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
+    submitBtn.disabled    = true;
     submitBtn.textContent = 'Wird gespeichert…';
 
     try {
-        // IMPORTANT: Do NOT set the Content-Type header manually!
-        // When using FormData the browser sets it automatically to
-        // "multipart/form-data" with the correct boundary string.
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-        const adminMsgBox = document.getElementById('admin-message-box');
+        // Do NOT set Content-Type manually – the browser sets it for FormData.
+        const response = await fetch(API_URL, { method: 'POST', body: formData });
+        const result   = await response.json();
 
         if (result.status === 'success') {
             showAdminMessage('Produkt erfolgreich erstellt!', 'success');
             form.reset();
-            loadProducts(activeCategoryId);  // Refresh the product list.
+            loadProducts(activeCategoryId);
         } else {
             showAdminMessage(result.message || 'Fehler beim Erstellen.', 'error');
         }
-
     } catch (error) {
         showAdminMessage('Serverfehler: ' + error.message, 'error');
     } finally {
-        // Re-enable the button no matter what happened.
-        submitBtn.disabled = false;
+        submitBtn.disabled    = false;
         submitBtn.textContent = 'Produkt speichern';
     }
 }
 
 
 // ============================================================
-// AUTH / SESSION FUNCTIONS
+// SESSION / AUTH FUNCTIONS
 // ============================================================
 
-// ------------------------------------------------------------
-// loadSessionStatus()
-// Ask the backend who is currently logged in and update the UI:
-//   - Status bar text
-//   - Logout button visibility
-//   - Admin panel visibility
-// ------------------------------------------------------------
+// Updates the navbar on the shop page and shows/hides the admin panel.
 function loadSessionStatus() {
     return sendJsonRequest({ action: 'sessionStatus' }, false).then(result => {
         const statusText = document.getElementById('status-text');
@@ -390,32 +319,37 @@ function loadSessionStatus() {
 
         if (result.logged_in) {
             const role = result.is_admin ? 'Administrator' : 'User';
-            statusText.textContent = `Eingeloggt als ${result.username} (${role})`;
+            statusText.textContent = `${result.username} (${role})`;
 
-            if (logoutBtn) logoutBtn.hidden = false;
+            if (logoutBtn)  logoutBtn.hidden  = false;
+            if (loginLink)  loginLink.hidden  = true;   // Don't show "Login" when already logged in
         } else {
-            statusText.textContent = 'Nicht eingeloggt';
+            statusText.textContent = '';
 
-            if (logoutBtn) logoutBtn.hidden = true;
+            if (logoutBtn)  logoutBtn.hidden  = true;
+            if (loginLink)  loginLink.hidden  = false;
         }
 
-        // Show or hide the admin panel based on the is_admin flag.
-        if (adminPanel) {
-            adminPanel.hidden = !result.is_admin;
+        // Admin panel: visible only for admins.
+        if (adminPanel) adminPanel.hidden = !result.is_admin;
+    });
+}
+
+// Called on the login page: if the user is already logged in,
+// skip the login page and send them straight to the shop.
+function redirectIfLoggedIn() {
+    sendJsonRequest({ action: 'sessionStatus' }, false).then(result => {
+        if (result.status === 'success' && result.logged_in) {
+            window.location.href = getShopUrl();
         }
     });
 }
 
 
 // ============================================================
-// UTILITY / HELPER FUNCTIONS
+// UTILITY FUNCTIONS
 // ============================================================
 
-// ------------------------------------------------------------
-// getApiUrl()
-// Works out the URL of the PHP backend regardless of where
-// the project lives on the server.
-// ------------------------------------------------------------
 function getApiUrl() {
     const origin = window.location.origin;
     const path   = window.location.pathname;
@@ -429,22 +363,24 @@ function getApiUrl() {
     return `${origin}/backend/logic/requestHandler.php`;
 }
 
-// ------------------------------------------------------------
-// sendJsonRequest(data, showMessage)
-// Send a JSON POST request to the backend and return the result.
-// Pass showMessage = false if you don't want a toast notification.
-// ------------------------------------------------------------
+// Returns the URL of index.html relative to the current page.
+function getShopUrl() {
+    // login.html and register.html are inside sites/ so we go one level up.
+    if (window.location.pathname.includes('/sites/')) {
+        return '../index.html';
+    }
+    return 'index.html';
+}
+
 function sendJsonRequest(data, renderMessage = true) {
     return fetch(API_URL, {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body:    JSON.stringify(data)
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
+    .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
     })
     .then(result => {
         if (renderMessage && result.message) {
@@ -458,45 +394,30 @@ function sendJsonRequest(data, renderMessage = true) {
     });
 }
 
-// ------------------------------------------------------------
-// setProductGridContent(html)
-// Replace everything in the product grid with the given HTML.
-// Used to show loading / error / empty state messages.
-// ------------------------------------------------------------
 function setProductGridContent(html) {
     if (productGrid) productGrid.innerHTML = html;
 }
 
-// ------------------------------------------------------------
-// showMessage(message, type)
-// Display a success or error message in the global message box.
-// ------------------------------------------------------------
+// Shows a Bootstrap alert in the global message box.
 function showMessage(message, type) {
     const msgBox = document.getElementById('message-box');
     if (!msgBox) return;
 
-    const color = type === 'success' ? 'green' : 'red';
-    msgBox.innerHTML = `<p style="color: ${color};">${message}</p>`;
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    msgBox.innerHTML = `<div class="alert ${alertClass} mb-0">${message}</div>`;
 }
 
-// ------------------------------------------------------------
-// showAdminMessage(message, type)
-// Same as showMessage but for the admin panel's own message box.
-// ------------------------------------------------------------
+// Shows a message inside the admin panel's own message area.
 function showAdminMessage(message, type) {
     const msgBox = document.getElementById('admin-message-box');
     if (!msgBox) return;
 
-    const color = type === 'success' ? 'green' : 'red';
-    msgBox.innerHTML = `<p style="color: ${color};">${message}</p>`;
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    msgBox.innerHTML = `<div class="alert ${alertClass} mb-0">${message}</div>`;
 }
 
-// ------------------------------------------------------------
-// escapeHtml(text)
-// Prevent XSS: converts characters like < > & into safe HTML
-// entities before inserting any user-supplied text into the DOM.
-// ALWAYS use this when putting database values into innerHTML.
-// ------------------------------------------------------------
+// Prevents XSS by escaping HTML special characters before inserting
+// any server data into innerHTML.
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = String(text);
