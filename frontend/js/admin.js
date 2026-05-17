@@ -128,7 +128,8 @@ function setupCreateForm() {
 // EDIT PRODUCT  (Bootstrap modal)
 // ============================================================
 function openEditModal(productId) {
-    const p = allProducts.find(x => x.id == productId);
+    const numericId = Number(productId);
+    const p = allProducts.find(x => Number(x.id) === numericId);
     if (!p) return;
 
     // Pre-fill all text/number fields with the existing data.
