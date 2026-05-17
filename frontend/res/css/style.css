@@ -1,37 +1,403 @@
+/* ============================================================
+   style.css
+   ------------------------------------------------------------
+   Styles for the entire TechShopHub frontend.
+   Sections:
+     1. Reset & Base
+     2. Layout (header, main)
+     3. Auth Status Bar
+     4. Shop – Search & Category Nav
+     5. Product Grid & Cards
+     6. Admin Panel & Form
+     7. Login / Register Forms
+     8. Utility (messages, loading states)
+============================================================ */
+
+
+/* ------------------------------------------------------------
+   1. RESET & BASE
+   A minimal reset so browsers render things consistently.
+------------------------------------------------------------ */
+*, *::before, *::after {
+    box-sizing: border-box;   /* padding/border are included in width */
+    margin: 0;
+    padding: 0;
+}
+
 body {
     font-family: Arial, sans-serif;
-    margin: 2rem;
+    background-color: #f4f4f4;
+    color: #333;
+    padding: 1rem;
 }
 
-#login-container,
-form {
-    max-width: 460px;
+
+/* ------------------------------------------------------------
+   2. LAYOUT
+------------------------------------------------------------ */
+header {
+    background-color: #1a1a2e;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
-label {
-    font-weight: 600;
+header h1 {
+    font-size: 1.5rem;
+    color: white;
 }
 
-input,
-select,
-button {
-    margin-top: 0.25rem;
-    margin-bottom: 0.5rem;
+main {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
+
+/* ------------------------------------------------------------
+   3. AUTH STATUS BAR
+------------------------------------------------------------ */
 .status-box {
-    margin: 0 0 1.25rem;
-    padding: 0.75rem;
-    border: 1px solid #cccccc;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.5rem 1rem;
     border-radius: 6px;
-    max-width: 460px;
-    background: #f7f7f7;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    color: white;
 }
 
 #logoutBtn {
-    margin-left: 0.75rem;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
 }
 
-#message-box {
+#logoutBtn:hover {
+    background: #c0392b;
+}
+
+
+/* ------------------------------------------------------------
+   4. SHOP – SEARCH & CATEGORY NAV
+------------------------------------------------------------ */
+#shop {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+#shop h2 {
+    margin-bottom: 1rem;
+    color: #1a1a2e;
+}
+
+/* Search input */
+#search-input {
+    width: 100%;
+    padding: 0.65rem 1rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    transition: border-color 0.2s;
+}
+
+#search-input:focus {
+    outline: none;
+    border-color: #1a1a2e;
+}
+
+/* Category buttons row */
+#category-nav {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.category-btn {
+    padding: 0.5rem 1.1rem;
+    border: 2px solid #1a1a2e;
+    background: white;
+    color: #1a1a2e;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s, color 0.2s;
+}
+
+.category-btn:hover,
+.category-btn.active {
+    background: #1a1a2e;
+    color: white;
+}
+
+
+/* ------------------------------------------------------------
+   5. PRODUCT GRID & CARDS
+------------------------------------------------------------ */
+
+/* Responsive grid: fills the row with cards that are at least
+   220px wide and at most 1fr (fraction of available space). */
+#product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+}
+
+/* Each product is an <article> element */
+.product-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;           /* clips the image to the rounded corners */
+    transition: transform 0.15s, box-shadow 0.15s;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Product image fills the card width */
+.product-image {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;          /* crop/scale without distorting */
+    background-color: #eee;
+}
+
+.product-info {
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;                    /* push content to fill remaining card height */
+}
+
+.product-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.3;
+}
+
+.product-category {
+    font-size: 0.78rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.product-price {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #e67e22;             /* orange – draws attention to the price */
+    margin-top: auto;           /* push price to the bottom of the info block */
+}
+
+.product-rating {
+    font-size: 0.9rem;
+    color: #f1c40f;             /* gold stars */
+    letter-spacing: 0.05em;
+}
+
+
+/* ------------------------------------------------------------
+   6. ADMIN PANEL & FORM
+------------------------------------------------------------ */
+#admin-panel {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid #e74c3c;  /* red bar marks it as a restricted area */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+#admin-panel h2 {
+    color: #e74c3c;
+    margin-bottom: 1.25rem;
+}
+
+#createProductForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 520px;
+}
+
+#createProductForm label {
+    font-weight: 600;
+    margin-top: 0.4rem;
+}
+
+#createProductForm input,
+#createProductForm select,
+#createProductForm textarea {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    width: 100%;
+}
+
+#createProductForm textarea {
+    resize: vertical;           /* user can resize vertically, not horizontally */
+}
+
+#createProductForm input:focus,
+#createProductForm select:focus,
+#createProductForm textarea:focus {
+    outline: none;
+    border-color: #e74c3c;
+}
+
+#createProductForm button[type="submit"] {
+    margin-top: 0.75rem;
+    padding: 0.65rem 1.5rem;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    align-self: flex-start;     /* don't stretch the button to full width */
+}
+
+#createProductForm button[type="submit"]:hover:not(:disabled) {
+    background: #c0392b;
+}
+
+#createProductForm button[type="submit"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#admin-message-box {
+    margin-top: 0.75rem;
+}
+
+
+/* ------------------------------------------------------------
+   7. LOGIN / REGISTER FORMS
+------------------------------------------------------------ */
+#login-container,
+#register-container {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    max-width: 460px;
+}
+
+#login-container h2,
+#register-container h2 {
+    margin-bottom: 1rem;
+    color: #1a1a2e;
+}
+
+/* Style all plain labels in these forms */
+#login-container label,
+#register-container label,
+form label {
+    font-weight: 600;
+    display: block;
+    margin-top: 0.75rem;
+}
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: normal !important;
+    cursor: pointer;
+}
+
+/* Style all plain inputs in login/register */
+#login-container input,
+#register-container input,
+#register-container select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    margin-top: 0.25rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+#login-container button[type="submit"],
+#register-container button[type="submit"],
+form > button[type="submit"] {
     margin-top: 1rem;
+    padding: 0.6rem 1.4rem;
+    background: #1a1a2e;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#login-container button[type="submit"]:hover,
+#register-container button[type="submit"]:hover,
+form > button[type="submit"]:hover {
+    background: #16213e;
+}
+
+#login-container p,
+#register-container p {
+    margin-top: 0.85rem;
+    font-size: 0.9rem;
+}
+
+#login-container a,
+#register-container a {
+    color: #1a1a2e;
+    font-weight: 600;
+}
+
+
+/* ------------------------------------------------------------
+   8. UTILITY – MESSAGES & LOADING STATES
+------------------------------------------------------------ */
+#message-box {
+    margin-top: 0.5rem;
+}
+
+/* Used while products are loading or when an error occurs */
+.loading-text,
+.error-text,
+.empty-text {
+    padding: 1.5rem;
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    grid-column: 1 / -1;       /* span all grid columns when inside #product-grid */
+}
+
+.error-text {
+    color: #e74c3c;
 }
