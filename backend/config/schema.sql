@@ -1,3 +1,15 @@
+-- ============================================================
+-- NOTE: If you uploaded a product image BEFORE this fix,
+-- its path is stored as  "backend/productpictures/file.png"
+-- (relative, broken).  Run the query below once to repair it:
+--
+--   UPDATE products
+--   SET    image_path = CONCAT('/TechShopHub/', image_path)
+--   WHERE  image_path LIKE 'backend/%';
+--
+-- Adjust "/TechShopHub" to match your server's project sub-path.
+-- ============================================================
+
 CREATE DATABASE IF NOT EXISTS techshophub;
 USE techshophub;
 

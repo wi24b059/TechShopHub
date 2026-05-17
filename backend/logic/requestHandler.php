@@ -19,6 +19,7 @@
 //   login           – check credentials and start a session
 //   logout          – destroy the session
 //   sessionStatus   – tell the frontend who is logged in
+//   getAllProducts   – admin: list every product for the product table
 //   getProducts     – fetch products by category or search term
 //   createProduct   – admin: add a new product (with image upload)
 //   updateProduct   – admin: edit a product   (with optional image)
@@ -212,6 +213,23 @@ if ($action === 'register') {
 // ACTION: getProducts  (public – no login required)
 // Return a list of products filtered by category or search term.
 // ==============================================================
+} elseif ($action === 'getAllProducts') {
+    // ---------------------------------------------------------------
+    // ADMIN ONLY – Return every product for the admin product table.
+    // ---------------------------------------------------------------
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    try {
+        $products = $productModel->getAllProducts();
+        $response = ['status' => 'success', 'products' => $products];
+    } catch (Throwable $e) {
+        error_log('TechShopHub getAllProducts error: ' . $e->getMessage());
+        $message  = $debugMode ? 'getAllProducts Exception: ' . $e->getMessage() : 'Produkte konnten nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
 } elseif ($action === 'getProducts') {
 
     $searchTerm = trim((string) ($data['searchTerm'] ?? ''));
@@ -514,8 +532,12 @@ function handleProductImageUpload(string $fieldName): array
         return ['path' => '', 'error' => 'Bild konnte nicht gespeichert werden.'];
     }
 
-    // Return a path relative to the project root so the frontend can use it in <img src="...">.
-    return ['path' => 'backend/productpictures/' . $filename, 'error' => null];
+    // Return a path relative to the server root so the frontend can use it in <img src="...">.
+    // $_SERVER['SCRIPT_NAME'] = e.g. /TechShopHub/backend/logic/requestHandler.php
+    // We remove the known suffix to get the project root: /TechShopHub
+    $projectBase = str_replace('/backend/logic/requestHandler.php', '', $_SERVER['SCRIPT_NAME']);
+
+    return ['path' => $projectBase . '/backend/productpictures/' . $filename, 'error' => null];
 }
 
 
