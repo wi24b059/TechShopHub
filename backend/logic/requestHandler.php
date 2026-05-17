@@ -2,20 +2,27 @@
 session_start();
 
 require_once __DIR__ . '/../models/user.class.php';
-$userModel = new User();
+require_once __DIR__ . '/../models/product.class.php';
+$userModel    = new User();
+$productModel = new Product();
 define('TECHSHOP_DEBUG', (bool)(getenv('TECHSHOP_DEBUG') ?: false));
 
 header('Content-Type: application/json');
 
 $inputJSON = file_get_contents('php://input');
-$data = json_decode($inputJSON, true);
+$data      = json_decode($inputJSON, true);
 
-if (!is_array($data)) {
+// multipart/form-data requests (file uploads) populate $_POST instead of php://input.
+// Allow those through by falling back to $_POST['action'].
+$action = is_array($data)
+    ? (string)($data['action'] ?? '')
+    : trim((string)($_POST['action'] ?? ''));
+
+if (!is_array($data) && $action === '') {
     echo json_encode(['status' => 'error', 'message' => 'Ungültiges JSON-Format.']);
     exit;
 }
 
-$action = $data['action'] ?? '';
 $response = ['status' => 'error', 'message' => 'Unbekannte Aktion.'];
 
 if ($action === 'register') {
@@ -120,6 +127,141 @@ if ($action === 'register') {
     } else {
         $response = ['status' => 'success', 'logged_in' => false];
     }
+} elseif ($action === 'getProducts') {
+    // ---------------------------------------------------------------
+    // PUBLIC – Produkte nach Kategorie oder Suchbegriff abrufen
+    // ---------------------------------------------------------------
+    $searchTerm = trim((string)($data['searchTerm'] ?? ''));
+    $categoryId = isset($data['categoryId']) ? (int)$data['categoryId'] : 0;
+
+    try {
+        if ($searchTerm !== '') {
+            $products = $productModel->searchProducts($searchTerm);
+        } elseif ($categoryId > 0) {
+            $products = $productModel->getProductsByCategory($categoryId);
+        } else {
+            $response = ['status' => 'error', 'message' => 'categoryId oder searchTerm erforderlich.'];
+            echo json_encode($response);
+            exit;
+        }
+
+        $response = ['status' => 'success', 'products' => $products];
+    } catch (Throwable $e) {
+        error_log('TechShopHub getProducts error: ' . $e->getMessage());
+        $response = [
+            'status'  => 'error',
+            'message' => TECHSHOP_DEBUG
+                ? 'getProducts Exception: ' . $e->getMessage()
+                : 'Produkte konnten nicht geladen werden.',
+        ];
+    }
+} elseif ($action === 'createProduct') {
+    // ---------------------------------------------------------------
+    // ADMIN ONLY – Neues Produkt anlegen (multipart/form-data)
+    // ---------------------------------------------------------------
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    $uploadResult = handleProductImageUpload('product_image');
+
+    if ($uploadResult['error'] !== null) {
+        echo json_encode(['status' => 'error', 'message' => $uploadResult['error']]);
+        exit;
+    }
+
+    try {
+        $newId = $productModel->createProduct($_POST, $uploadResult['path']);
+        $response = [
+            'status'  => 'success',
+            'message' => 'Produkt erfolgreich erstellt.',
+            'id'      => $newId,
+        ];
+    } catch (InvalidArgumentException $e) {
+        $response = ['status' => 'error', 'message' => $e->getMessage()];
+    } catch (Throwable $e) {
+        error_log('TechShopHub createProduct error: ' . $e->getMessage());
+        $response = [
+            'status'  => 'error',
+            'message' => TECHSHOP_DEBUG
+                ? 'createProduct Exception: ' . $e->getMessage()
+                : 'Produkt konnte nicht erstellt werden.',
+        ];
+    }
+} elseif ($action === 'updateProduct') {
+    // ---------------------------------------------------------------
+    // ADMIN ONLY – Produkt aktualisieren (multipart/form-data)
+    // ---------------------------------------------------------------
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    $productId = (int)($_POST['id'] ?? 0);
+
+    if ($productId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungültige Produkt-ID.']);
+        exit;
+    }
+
+    // Image upload is optional for updates.
+    $imagePath = null;
+    if (!empty($_FILES['product_image']['name'])) {
+        $uploadResult = handleProductImageUpload('product_image');
+        if ($uploadResult['error'] !== null) {
+            echo json_encode(['status' => 'error', 'message' => $uploadResult['error']]);
+            exit;
+        }
+        $imagePath = $uploadResult['path'];
+    }
+
+    try {
+        $updated  = $productModel->updateProduct($productId, $_POST, $imagePath);
+        $response = $updated
+            ? ['status' => 'success', 'message' => 'Produkt erfolgreich aktualisiert.']
+            : ['status' => 'error',   'message' => 'Produkt nicht gefunden oder keine Änderung.'];
+    } catch (InvalidArgumentException $e) {
+        $response = ['status' => 'error', 'message' => $e->getMessage()];
+    } catch (Throwable $e) {
+        error_log('TechShopHub updateProduct error: ' . $e->getMessage());
+        $response = [
+            'status'  => 'error',
+            'message' => TECHSHOP_DEBUG
+                ? 'updateProduct Exception: ' . $e->getMessage()
+                : 'Produkt konnte nicht aktualisiert werden.',
+        ];
+    }
+} elseif ($action === 'deleteProduct') {
+    // ---------------------------------------------------------------
+    // ADMIN ONLY – Produkt löschen (JSON)
+    // ---------------------------------------------------------------
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    $productId = (int)($data['id'] ?? 0);
+
+    if ($productId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungültige Produkt-ID.']);
+        exit;
+    }
+
+    try {
+        $deleted  = $productModel->deleteProduct($productId);
+        $response = $deleted
+            ? ['status' => 'success', 'message' => 'Produkt erfolgreich gelöscht.']
+            : ['status' => 'error',   'message' => 'Produkt nicht gefunden.'];
+    } catch (Throwable $e) {
+        error_log('TechShopHub deleteProduct error: ' . $e->getMessage());
+        $response = [
+            'status'  => 'error',
+            'message' => TECHSHOP_DEBUG
+                ? 'deleteProduct Exception: ' . $e->getMessage()
+                : 'Produkt konnte nicht gelöscht werden.',
+        ];
+    }
 }
 
 echo json_encode($response);
@@ -211,5 +353,69 @@ function setPersistentSessionCookie(int $seconds): void
 
     // Fallback for older PHP versions.
     setcookie(session_name(), session_id(), time() + $seconds, '/; samesite=Lax', '', $isSecure, true);
+}
+
+/**
+ * Verarbeitet einen Produkt-Bild-Upload sicher.
+ *
+ * @param string $fieldName  Der Name des <input type="file">-Feldes.
+ * @return array{path: string, error: string|null}
+ *         'path'  – relativer Speicherpfad (leer bei Fehler)
+ *         'error' – Fehlermeldung oder null bei Erfolg
+ */
+function handleProductImageUpload(string $fieldName): array
+{
+    $noFile = ['path' => '', 'error' => null];
+
+    if (empty($_FILES[$fieldName]['name'])) {
+        return ['path' => '', 'error' => 'Keine Bilddatei übermittelt.'];
+    }
+
+    $file = $_FILES[$fieldName];
+
+    // PHP upload error check.
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return ['path' => '', 'error' => 'Upload-Fehler (Code ' . $file['error'] . ').'];
+    }
+
+    // File size limit: 5 MB.
+    if ($file['size'] > 5 * 1024 * 1024) {
+        return ['path' => '', 'error' => 'Bild darf maximal 5 MB groß sein.'];
+    }
+
+    // Validate MIME type via finfo (not just the extension).
+    $allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    $finfo       = new finfo(FILEINFO_MIME_TYPE);
+    $mime        = $finfo->file($file['tmp_name']);
+
+    if (!in_array($mime, $allowedMime, true)) {
+        return ['path' => '', 'error' => 'Nur JPEG, PNG, GIF und WebP sind erlaubt.'];
+    }
+
+    // Map MIME type to a safe extension.
+    $extMap = [
+        'image/jpeg' => 'jpg',
+        'image/png'  => 'png',
+        'image/gif'  => 'gif',
+        'image/webp' => 'webp',
+    ];
+    $ext = $extMap[$mime];
+
+    // Build destination directory.
+    $uploadDir = __DIR__ . '/../productpictures/';
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
+        return ['path' => '', 'error' => 'Upload-Verzeichnis konnte nicht erstellt werden.'];
+    }
+
+    // Generate a unique, unpredictable filename.
+    $filename = bin2hex(random_bytes(16)) . '.' . $ext;
+    $destPath = $uploadDir . $filename;
+
+    if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+        return ['path' => '', 'error' => 'Bild konnte nicht gespeichert werden.'];
+    }
+
+    // Return a path relative to the project root (usable in frontend <img src="...">).
+    return ['path' => 'backend/productpictures/' . $filename, 'error' => null];
 }
 

@@ -1,6 +1,19 @@
 <?php
 
-declare(strict_types=1);
+// ============================================================
+// product.class.php
+// ------------------------------------------------------------
+// This class handles all database operations for products.
+//
+// Available methods:
+//   getProductsByCategory($categoryId) → list products by category
+//   searchProducts($searchTerm)        → search by name or description
+//   createProduct($data, $imagePath)   → add a new product
+//   updateProduct($id, $data, $img)    → edit an existing product
+//   deleteProduct($id)                 → remove a product
+//
+// All queries use prepared statements to prevent SQL injection.
+// ============================================================
 
 require_once __DIR__ . '/../config/database.php';
 
@@ -13,209 +26,173 @@ class Product
         $this->db = Database::getConnection();
     }
 
-    /**
-     * Gibt alle Produkte einer bestimmten Kategorie zurück.
-     *
-     * @param int $categoryId Die ID der Kategorie.
-     * @return array<int, array<string, mixed>> Liste der Produkte.
-     * @throws RuntimeException Bei einem Datenbankfehler.
-     */
+    // ----------------------------------------------------------
+    // Get all products that belong to a specific category.
+    // Also fetches the category name via a JOIN so the caller
+    // doesn't need a second query.
+    //
+    // Returns an array of product rows (can be empty).
+    // ----------------------------------------------------------
     public function getProductsByCategory(int $categoryId): array
     {
-        try {
-            $stmt = $this->db->prepare(
-                'SELECT p.*, c.name AS category_name
-                 FROM products p
-                 JOIN categories c ON c.id = p.category_id
-                 WHERE p.category_id = :category_id
-                 ORDER BY p.created_at DESC'
-            );
-            $stmt->execute([':category_id' => $categoryId]);
+        $sql = '
+            SELECT p.*, c.name AS category_name
+            FROM   products p
+            JOIN   categories c ON c.id = p.category_id
+            WHERE  p.category_id = :category_id
+            ORDER  BY p.created_at DESC
+        ';
 
-            return $stmt->fetchAll();
-        } catch (\PDOException $e) {
-            throw new \RuntimeException(
-                'Fehler beim Laden der Produkte nach Kategorie: ' . $e->getMessage(),
-                (int)$e->getCode(),
-                $e
-            );
-        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':category_id' => $categoryId]);
+
+        return $stmt->fetchAll();
     }
 
-    /**
-     * Durchsucht Produkte nach Name oder Beschreibung.
-     *
-     * @param string $searchTerm Der Suchbegriff.
-     * @return array<int, array<string, mixed>> Gefundene Produkte.
-     * @throws RuntimeException Bei einem Datenbankfehler.
-     */
+    // ----------------------------------------------------------
+    // Search products by name or description.
+    // The "%" around the term is a SQL wildcard meaning
+    // "anything before / after the search term".
+    //
+    // Returns an array of matching product rows (can be empty).
+    // ----------------------------------------------------------
     public function searchProducts(string $searchTerm): array
     {
-        try {
-            $like = '%' . $searchTerm . '%';
+        // Wrap the term in wildcards for a LIKE search.
+        $like = '%' . $searchTerm . '%';
 
-            $stmt = $this->db->prepare(
-                'SELECT p.*, c.name AS category_name
-                 FROM products p
-                 JOIN categories c ON c.id = p.category_id
-                 WHERE p.name LIKE :name_term
-                    OR p.description LIKE :desc_term
-                 ORDER BY p.name ASC'
-            );
-            $stmt->execute([
-                ':name_term' => $like,
-                ':desc_term' => $like,
-            ]);
+        $sql = '
+            SELECT p.*, c.name AS category_name
+            FROM   products p
+            JOIN   categories c ON c.id = p.category_id
+            WHERE  p.name        LIKE :name_term
+               OR  p.description LIKE :desc_term
+            ORDER  BY p.name ASC
+        ';
 
-            return $stmt->fetchAll();
-        } catch (\PDOException $e) {
-            throw new \RuntimeException(
-                'Fehler bei der Produktsuche: ' . $e->getMessage(),
-                (int)$e->getCode(),
-                $e
-            );
-        }
+        $stmt = $this->db->prepare($sql);
+
+        // We need two separate placeholders even though the value is the same,
+        // because each placeholder can only be used once in PDO.
+        $stmt->execute([
+            ':name_term' => $like,
+            ':desc_term' => $like,
+        ]);
+
+        return $stmt->fetchAll();
     }
 
-    /**
-     * Legt ein neues Produkt an.
-     *
-     * Erwartete Schlüssel in $data:
-     *   category_id (int), name (string), description (string),
-     *   price (float), rating (float, optional)
-     *
-     * @param array<string, mixed> $data      Produktdaten.
-     * @param string               $imagePath Relativer Pfad zum Produktbild.
-     * @return int Die ID des neu erstellten Produkts.
-     * @throws InvalidArgumentException Wenn Pflichtfelder fehlen.
-     * @throws RuntimeException         Bei einem Datenbankfehler.
-     */
+    // ----------------------------------------------------------
+    // Insert a new product into the database.
+    //
+    // $data must contain: category_id, name, description, price
+    // $data can optionally contain: rating
+    // $imagePath is the relative path to the uploaded image file.
+    //
+    // Returns the ID of the newly created product.
+    // ----------------------------------------------------------
     public function createProduct(array $data, string $imagePath): int
     {
-        $this->assertRequiredFields($data, ['category_id', 'name', 'description', 'price']);
+        // Make sure the required fields are actually present.
+        $this->requireFields($data, ['category_id', 'name', 'description', 'price']);
 
-        try {
-            $stmt = $this->db->prepare(
-                'INSERT INTO products (category_id, name, description, price, rating, image_path)
-                 VALUES (:category_id, :name, :description, :price, :rating, :image_path)'
-            );
+        $sql = '
+            INSERT INTO products (category_id, name, description, price, rating, image_path)
+            VALUES               (:category_id, :name, :description, :price, :rating, :image_path)
+        ';
 
-            $stmt->execute([
-                ':category_id' => (int)$data['category_id'],
-                ':name'        => trim((string)$data['name']),
-                ':description' => trim((string)$data['description']),
-                ':price'       => (float)$data['price'],
-                ':rating'      => isset($data['rating']) ? (float)$data['rating'] : 0.0,
-                ':image_path'  => $imagePath,
-            ]);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':category_id' => (int)   $data['category_id'],
+            ':name'        =>          trim($data['name']),
+            ':description' =>          trim($data['description']),
+            ':price'       => (float)  $data['price'],
+            ':rating'      => (float) ($data['rating'] ?? 0.0),  // default to 0 if not provided
+            ':image_path'  =>          $imagePath,
+        ]);
 
-            return (int)$this->db->lastInsertId();
-        } catch (\PDOException $e) {
-            throw new \RuntimeException(
-                'Fehler beim Erstellen des Produkts: ' . $e->getMessage(),
-                (int)$e->getCode(),
-                $e
-            );
-        }
+        // lastInsertId() returns the auto-incremented ID of the row we just created.
+        return (int) $this->db->lastInsertId();
     }
 
-    /**
-     * Aktualisiert ein bestehendes Produkt.
-     *
-     * Erlaubte Schlüssel in $data:
-     *   category_id, name, description, price, rating
-     * Der $imagePath-Parameter ist optional; wird er übergeben, wird auch
-     * das Bild aktualisiert.
-     *
-     * @param int                  $id        Produkt-ID.
-     * @param array<string, mixed> $data      Felder, die aktualisiert werden sollen.
-     * @param string|null          $imagePath Neuer Bildpfad (optional).
-     * @return bool true bei Erfolg.
-     * @throws InvalidArgumentException Wenn $data leer ist.
-     * @throws RuntimeException         Bei einem Datenbankfehler.
-     */
+    // ----------------------------------------------------------
+    // Update an existing product.
+    //
+    // Only the fields present in $data will be changed.
+    // Passing a new $imagePath is optional – leave it null to
+    // keep the existing image.
+    //
+    // Returns true if a row was actually changed, false if not.
+    // ----------------------------------------------------------
     public function updateProduct(int $id, array $data, ?string $imagePath = null): bool
     {
-        if (empty($data) && $imagePath === null) {
-            throw new \InvalidArgumentException('Es müssen Felder zum Aktualisieren übergeben werden.');
-        }
+        // We build the SET clause dynamically so only sent fields get updated.
+        // Allowed field names – we whitelist them to prevent anyone from
+        // accidentally (or maliciously) updating other columns.
+        $allowedFields = ['category_id', 'name', 'description', 'price', 'rating'];
 
-        $allowed = ['category_id', 'name', 'description', 'price', 'rating'];
-        $setClauses = [];
-        $params = [':id' => $id];
+        $setParts = [];  // Will hold strings like "name = :name"
+        $params   = [':id' => $id];
 
-        foreach ($allowed as $field) {
+        foreach ($allowedFields as $field) {
             if (array_key_exists($field, $data)) {
-                $setClauses[] = "{$field} = :{$field}";
-                $params[":{$field}"] = $data[$field];
+                $setParts[]        = "$field = :$field";
+                $params[":$field"] = $data[$field];
             }
         }
 
+        // If a new image was uploaded, update that column too.
         if ($imagePath !== null) {
-            $setClauses[] = 'image_path = :image_path';
+            $setParts[]          = 'image_path = :image_path';
             $params[':image_path'] = $imagePath;
         }
 
-        if (empty($setClauses)) {
+        // Nothing to update?
+        if (empty($setParts)) {
             return false;
         }
 
-        try {
-            $sql  = 'UPDATE products SET ' . implode(', ', $setClauses) . ' WHERE id = :id';
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
+        // Glue the parts together: "name = :name, price = :price, ..."
+        $setClause = implode(', ', $setParts);
+        $sql       = "UPDATE products SET $setClause WHERE id = :id";
 
-            return $stmt->rowCount() > 0;
-        } catch (\PDOException $e) {
-            throw new \RuntimeException(
-                'Fehler beim Aktualisieren des Produkts: ' . $e->getMessage(),
-                (int)$e->getCode(),
-                $e
-            );
-        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        // rowCount() tells us how many rows were actually changed.
+        return $stmt->rowCount() > 0;
     }
 
-    /**
-     * Löscht ein Produkt anhand seiner ID.
-     *
-     * @param int $id Produkt-ID.
-     * @return bool true wenn ein Datensatz gelöscht wurde.
-     * @throws RuntimeException Bei einem Datenbankfehler.
-     */
+    // ----------------------------------------------------------
+    // Delete a product by its ID.
+    //
+    // Returns true if the product was found and deleted.
+    // Returns false if no product with that ID existed.
+    // ----------------------------------------------------------
     public function deleteProduct(int $id): bool
     {
-        try {
-            $stmt = $this->db->prepare('DELETE FROM products WHERE id = :id');
-            $stmt->execute([':id' => $id]);
+        $stmt = $this->db->prepare('DELETE FROM products WHERE id = :id');
+        $stmt->execute([':id' => $id]);
 
-            return $stmt->rowCount() > 0;
-        } catch (\PDOException $e) {
-            throw new \RuntimeException(
-                'Fehler beim Löschen des Produkts: ' . $e->getMessage(),
-                (int)$e->getCode(),
-                $e
-            );
-        }
+        return $stmt->rowCount() > 0;
     }
 
-    // -------------------------------------------------------------------------
-    // Hilfsmethoden
-    // -------------------------------------------------------------------------
+    // ==========================================================
+    // Private helper methods
+    // ==========================================================
 
-    /**
-     * Prüft, ob alle erforderlichen Felder in $data vorhanden und nicht leer sind.
-     *
-     * @param array<string, mixed> $data
-     * @param string[]             $fields
-     * @throws InvalidArgumentException
-     */
-    private function assertRequiredFields(array $data, array $fields): void
+    // ----------------------------------------------------------
+    // Check that all required keys exist in $data and are
+    // not empty. Throws an exception with a clear message if
+    // something is missing – easier to debug than a silent fail.
+    // ----------------------------------------------------------
+    private function requireFields(array $data, array $fields): void
     {
         foreach ($fields as $field) {
-            if (!isset($data[$field]) || (string)$data[$field] === '') {
-                throw new \InvalidArgumentException(
-                    "Pflichtfeld fehlt oder ist leer: \"{$field}\"."
-                );
+            $isEmpty = !isset($data[$field]) || trim((string) $data[$field]) === '';
+
+            if ($isEmpty) {
+                throw new InvalidArgumentException("Missing required field: \"$field\"");
             }
         }
     }
