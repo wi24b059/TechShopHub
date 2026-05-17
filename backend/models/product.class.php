@@ -164,6 +164,27 @@ class Product
     }
 
     // ----------------------------------------------------------
+    // Get ALL products (all categories combined).
+    // Used by the admin panel to show a full product list.
+    //
+    // Returns an array of all product rows ordered by category → name.
+    // ----------------------------------------------------------
+    public function getAllProducts(): array
+    {
+        $sql = '
+            SELECT p.*, c.name AS category_name
+            FROM   products p
+            JOIN   categories c ON c.id = p.category_id
+            ORDER  BY c.name ASC, p.name ASC
+        ';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll();
+    }
+
+    // ----------------------------------------------------------
     // Delete a product by its ID.
     //
     // Returns true if the product was found and deleted.
