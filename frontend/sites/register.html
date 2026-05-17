@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>TechShopHub - Registrierung</title>
+    <link rel="stylesheet" href="../res/css/style.css">
+    <script src="../js/script.js" defer></script>
+</head>
+<body>
+    <h1>Neues Konto erstellen</h1>
+
+    <form id="registerForm">
+        <label for="reg_salutation">Anrede:</label>
+        <select id="reg_salutation" name="salutation" required>
+            <option value="">Bitte auswählen</option>
+            <option value="Herr">Herr</option>
+            <option value="Frau">Frau</option>
+            <option value="Divers">Divers</option>
+        </select><br><br>
+
+        <label for="reg_firstname">Vorname:</label><br>
+        <input type="text" id="reg_firstname" name="firstname" minlength="2" maxlength="60" pattern="[A-Za-zÄÖÜäöüß\s-]+" required><br>
+
+        <label for="reg_lastname">Nachname:</label><br>
+        <input type="text" id="reg_lastname" name="lastname" minlength="2" maxlength="60" pattern="[A-Za-zÄÖÜäöüß\s-]+" required><br>
+
+        <label for="reg_address">Adresse:</label><br>
+        <input type="text" id="reg_address" name="address" minlength="5" maxlength="120" required><br>
+
+        <label for="reg_zip">PLZ:</label><br>
+        <input type="text" id="reg_zip" name="zip" pattern="[0-9]{4,10}" inputmode="numeric" required><br>
+
+        <label for="reg_city">Ort:</label><br>
+        <input type="text" id="reg_city" name="city" minlength="2" maxlength="80" pattern="[A-Za-zÄÖÜäöüß\s.-]+" required><br>
+
+        <label for="reg_email">E-Mail:</label><br>
+        <input type="email" id="reg_email" name="email" autocomplete="email" maxlength="120" required><br>
+
+        <label for="reg_username">Benutzername:</label><br>
+        <input type="text" id="reg_username" name="username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_.-]+" autocomplete="username" required><br>
+
+        <label for="reg_pwd1">Passwort:</label><br>
+        <input type="password" id="reg_pwd1" name="password" minlength="8" autocomplete="new-password" required><br>
+
+        <label for="reg_pwd2">Passwort bestätigen:</label><br>
+        <input type="password" id="reg_pwd2" name="password_confirm" minlength="8" autocomplete="new-password" required><br>
+
+        <label for="reg_payment">Zahlungsinformationen:</label><br>
+        <input type="text" id="reg_payment" name="payment" minlength="3" maxlength="120" placeholder="z.B. Rechnung" required><br><br>
+
+        <button type="submit">Registrieren</button>
+    </form>
+    <p><a href="../index.html">Zurück zum Login</a></p>
+
+    <div id="message-box"></div>
+</body>
+</html>

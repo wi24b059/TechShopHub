@@ -1,0 +1,37 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 2rem;
+}
+
+#login-container,
+form {
+    max-width: 460px;
+}
+
+label {
+    font-weight: 600;
+}
+
+input,
+select,
+button {
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.status-box {
+    margin: 0 0 1.25rem;
+    padding: 0.75rem;
+    border: 1px solid #cccccc;
+    border-radius: 6px;
+    max-width: 460px;
+    background: #f7f7f7;
+}
+
+#logoutBtn {
+    margin-left: 0.75rem;
+}
+
+#message-box {
+    margin-top: 1rem;
+}
