@@ -184,7 +184,7 @@ function buildProductCard(p) {
     return `
         <div class="col">
             <div class="card h-100 shadow-sm">
-                <img src="${escapeHtml(p.image_path || '')}" alt="${escapeHtml(p.name)}"
+                <img src="${escapeHtml(getImageUrl(p.image_path || ''))}" alt="${escapeHtml(p.name)}"
                      class="card-img-top product-img"
                      onerror="this.src='${grey}'">
                 <div class="card-body d-flex flex-column">

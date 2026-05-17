@@ -532,8 +532,12 @@ function handleProductImageUpload(string $fieldName): array
         return ['path' => '', 'error' => 'Bild konnte nicht gespeichert werden.'];
     }
 
-    // Return a path relative to the project root so the frontend can use it in <img src="...">.
-    return ['path' => 'backend/productpictures/' . $filename, 'error' => null];
+    // Return a path relative to the server root so the frontend can use it in <img src="...">.
+    // $_SERVER['SCRIPT_NAME'] = e.g. /TechShopHub/backend/logic/requestHandler.php
+    // We remove the known suffix to get the project root: /TechShopHub
+    $projectBase = str_replace('/backend/logic/requestHandler.php', '', $_SERVER['SCRIPT_NAME']);
+
+    return ['path' => $projectBase . '/backend/productpictures/' . $filename, 'error' => null];
 }
 
 

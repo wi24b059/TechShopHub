@@ -17,6 +17,29 @@
 // ============================================================
 
 
+// Converts a stored image path to a usable <img src=""> URL.
+//
+// The backend now stores absolute paths like /TechShopHub/backend/productpictures/file.png
+// This function handles both old relative paths and new absolute paths gracefully.
+window.getImageUrl = function (path) {
+    if (!path) return '';
+
+    // Already absolute (starts with / or http) → use directly.
+    if (path.startsWith('/') || path.startsWith('http')) return path;
+
+    // Old relative path like "backend/productpictures/..." – resolve against project root.
+    // getApiUrl() = https://localhost/TechShopHub/backend/logic/requestHandler.php
+    // Project root  = https://localhost/TechShopHub
+    if (path.startsWith('backend/')) {
+        const projectRoot = getApiUrl().replace('/backend/logic/requestHandler.php', '');
+        return projectRoot + '/' + path;
+    }
+
+    // Anything else (e.g. sample-data "res/img/...") – return as-is.
+    return path;
+};
+
+
 // ---- Global helper: API URL ---------------------------------
 // Exposed on window so script.js / admin.js can use it too.
 window.getApiUrl = function () {

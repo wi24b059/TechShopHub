@@ -20,12 +20,13 @@ let allProducts = [];
 // ============================================================
 // ON PAGE LOAD
 // ============================================================
-document.addEventListener('DOMContentLoaded', function () {
-    checkAdminAccess();  // Redirect non-admins
-    loadAllProducts();    // Fill the product table
-    setupCreateForm();    // Wire up create form
-    setupEditForm();      // Wire up edit modal
-});
+// admin.js is loaded with `defer`, which means it runs after the
+// HTML is fully parsed. We can call our init functions directly
+// here – no need to wrap them in a DOMContentLoaded listener.
+checkAdminAccess();   // Redirect non-admins
+loadAllProducts();    // Fill the product table
+setupCreateForm();    // Wire up create form
+setupEditForm();      // Wire up edit modal
 
 // ============================================================
 // ACCESS CONTROL
@@ -83,7 +84,7 @@ function buildProductRow(p) {
 
     return `
         <tr>
-            <td><img src="${escapeHtml(p.image_path || '')}" alt="${escapeHtml(p.name)}"
+            <td><img src="${escapeHtml(getImageUrl(p.image_path || ''))}" alt="${escapeHtml(p.name)}"
                      style="width:60px;height:45px;object-fit:cover;border-radius:4px;"
                      onerror="this.src='${grey}'"></td>
             <td class="fw-semibold">${escapeHtml(p.name)}</td>
@@ -141,9 +142,10 @@ function openEditModal(productId) {
     // Show the current image as a small preview.
     const preview = document.getElementById('edit_current_image');
     if (preview) {
-        preview.src     = p.image_path || '';
+        const resolvedSrc = getImageUrl(p.image_path || '');
+        preview.src     = resolvedSrc;
         preview.onerror = function () { this.hidden = true; };
-        preview.hidden  = !p.image_path;
+        preview.hidden  = !resolvedSrc;
     }
 
     // Clear old messages and open the modal.
