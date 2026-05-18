@@ -69,7 +69,39 @@ INSERT INTO products (category_id, name, description, price, rating, image_path)
     (2, 'BassBoost 360',     'Wireless-Headset mit ANC, 30 h Akku und 360°-Spatial-Audio.',                           199.00, 4.8, 'res/img/bassboost-360.jpg'),
     (3, 'PowerDesk i9',      'High-End-Gaming-PC mit Intel Core i9, RTX 4080, 32 GB DDR5-RAM und 2 TB NVMe-SSD.',    2499.00, 4.9, 'res/img/powerdesk-i9.jpg'),
     (3, 'HomeOffice Tower',  'Zuverlässiger Office-PC mit AMD Ryzen 5, 16 GB RAM und 512 GB SSD.',                     749.00, 4.3, 'res/img/homeoffice-tower.jpg'),
-    (3, 'MiniPC Compact',    'Kompakter Mini-PC für den Schreibtisch, Intel Core i5, 8 GB RAM, 256 GB SSD.',           399.00, 4.1, 'res/img/minipc-compact.jpg');
+     (3, 'MiniPC Compact',    'Kompakter Mini-PC für den Schreibtisch, Intel Core i5, 8 GB RAM, 256 GB SSD.',           399.00, 4.1, 'res/img/minipc-compact.jpg');
+
+-- ============================================================
+-- Bestellungen (Orders)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_orders_user
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+-- ============================================================
+-- Bestellpositionen (Order Items)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price_at_purchase DECIMAL(10, 2) NOT NULL,
+    CONSTRAINT fk_order_items_order
+        FOREIGN KEY (order_id) REFERENCES orders (id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_order_items_product
+        FOREIGN KEY (product_id) REFERENCES products (id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
 -- ============================================================
 -- Manueller Insert eines Administrators laut Anforderung.

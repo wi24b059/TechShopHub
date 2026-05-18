@@ -77,6 +77,10 @@ window.escapeHtml = function (text) {
             <a class="navbar-brand fw-bold" href="${base}index.html">🛒 TechShopHub</a>
             <div class="d-flex align-items-center gap-2 ms-auto">
                 <span id="nav-username" class="text-white-50 small"></span>
+                <a id="nav-cart-link" href="${base}sites/cart.html" class="btn btn-sm btn-outline-info position-relative">
+                    🛍️ Warenkorb
+                    <span id="cart-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger ps-2 pe-2" hidden>0</span>
+                </a>
                 <a id="nav-admin-link" href="${base}sites/admin.html"
                    class="btn btn-sm btn-outline-warning" hidden>⚙️ Admin</a>
                 <a id="nav-login-link" href="${base}sites/login.html"
@@ -148,6 +152,13 @@ window.escapeHtml = function (text) {
         }
     })
     .catch(err => console.error('Navbar session check failed:', err));
+    
+    // ---- Update cart badge on page load ----
+    setTimeout(() => {
+        if (typeof updateBadge === 'function') {
+            updateBadge();
+        }
+    }, 100);
 
 })();
 

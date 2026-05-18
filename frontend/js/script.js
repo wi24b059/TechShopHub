@@ -183,7 +183,7 @@ function buildProductCard(p) {
 
     return `
         <div class="col">
-            <div class="card h-100 shadow-sm">
+v            <div class="card h-100 shadow-sm d-flex flex-column">
                 <img src="${escapeHtml(getImageUrl(p.image_path || ''))}" alt="${escapeHtml(p.name)}"
                      class="card-img-top product-img"
                      onerror="this.src='${grey}'">
@@ -191,7 +191,11 @@ function buildProductCard(p) {
                     <h6 class="card-title mb-1">${escapeHtml(p.name)}</h6>
                     <p class="text-muted small mb-1">${escapeHtml(p.category_name || '')}</p>
                     <p class="text-warning mb-1">${buildStarRating(parseFloat(p.rating))} ${rating}</p>
-                    <p class="fw-bold mt-auto mb-0">€ ${escapeHtml(price)}</p>
+                    <p class="fw-bold mb-2">€ ${escapeHtml(price)}</p>
+                    <button class="btn btn-sm btn-primary mt-auto" 
+                            onclick="addToCart({id: ${p.id}, name: '${p.name.replace(/'/g, "\\'")}', price: ${p.price}, image_path: '${(p.image_path || '').replace(/'/g, "\\'")}', category_name: '${(p.category_name || '').replace(/'/g, "\\'")}'})">
+                        🛒 In Warenkorb
+                    </button>
                 </div>
             </div>
         </div>`;

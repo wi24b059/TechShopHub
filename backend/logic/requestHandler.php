@@ -24,6 +24,9 @@
 //   createProduct   – admin: add a new product (with image upload)
 //   updateProduct   – admin: edit a product   (with optional image)
 //   deleteProduct   – admin: remove a product
+//   placeOrder      – create a new order from cart items (requires login)
+//   getUserOrders   – get all orders for the current user (requires login)
+//   getOrderDetails – get detailed info for a specific order (requires login)
 // ============================================================
 
 session_start();
@@ -31,9 +34,11 @@ session_start();
 // Load the model classes so we can use their methods below.
 require_once __DIR__ . '/../models/user.class.php';
 require_once __DIR__ . '/../models/product.class.php';
+require_once __DIR__ . '/../models/order.class.php';
 
 $userModel    = new User();
 $productModel = new Product();
+$orderModel   = new Order();
 
 // When TECHSHOP_DEBUG is true, real error messages are shown in responses.
 // Keep this false/unset in production so users never see PHP internals!
@@ -372,9 +377,89 @@ if ($action === 'register') {
         $message  = $debugMode ? 'deleteProduct Exception: ' . $e->getMessage() : 'Produkt konnte nicht gelöscht werden.';
         $response = ['status' => 'error', 'message' => $message];
     }
-}
 
-// Send the response back to the browser as JSON.
+
+// ==============================================================
+// ACTION: placeOrder
+// Create a new order from cart items (requires login).
+// ==============================================================
+} elseif ($action === 'placeOrder') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Bitte melden Sie sich an.']);
+        exit;
+    }
+
+    $items = $data['items'] ?? [];
+
+    if (empty($items) || !is_array($items)) {
+        echo json_encode(['status' => 'error', 'message' => 'Warenkorb ist leer.']);
+        exit;
+    }
+
+    try {
+        $orderId = $orderModel->placeOrder($_SESSION['user_id'], $items);
+        $response = [
+            'status'   => 'success',
+            'message'  => 'Bestellung erfolgreich!',
+            'order_id' => $orderId
+        ];
+
+    } catch (Throwable $e) {
+        error_log('TechShopHub placeOrder error: ' . $e->getMessage());
+        $message  = $debugMode ? 'placeOrder Exception: ' . $e->getMessage() : 'Bestellung fehlgeschlagen.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+
+// ==============================================================
+// ACTION: getUserOrders
+// ==============================================================
+} elseif ($action === 'getUserOrders') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Bitte melden Sie sich an.']);
+        exit;
+    }
+
+    try {
+        $orders = $orderModel->getUserOrders($_SESSION['user_id']);
+        $response = ['status' => 'success', 'orders' => $orders];
+
+    } catch (Throwable $e) {
+        error_log('TechShopHub getUserOrders error: ' . $e->getMessage());
+        $message  = $debugMode ? 'getUserOrders Exception: ' . $e->getMessage() : 'Bestellungen konnten nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+
+// ==============================================================
+// ACTION: getOrderDetails
+// ==============================================================
+} elseif ($action === 'getOrderDetails') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Bitte melden Sie sich an.']);
+        exit;
+    }
+
+    $orderId = (int) ($data['orderId'] ?? 0);
+
+    if ($orderId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungültige Bestellungs-ID.']);
+        exit;
+    }
+
+    try {
+        $orderData = $orderModel->getOrderDetails($orderId, $_SESSION['user_id']);
+        $response = ['status' => 'success', 'data' => $orderData];
+
+    } catch (Throwable $e) {
+        error_log('TechShopHub getOrderDetails error: ' . $e->getMessage());
+        $message  = $debugMode ? 'getOrderDetails Exception: ' . $e->getMessage() : 'Bestellung konnte nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+}
 echo json_encode($response);
 
 
