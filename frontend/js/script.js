@@ -182,8 +182,8 @@ function buildProductCard(p) {
     const grey   = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='150'%3E%3Crect width='200' height='150' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%236c757d' font-size='13'%3EKein Bild%3C/text%3E%3C/svg%3E";
 
     return `
-        <div class="col">
-            <div class="card h-100 shadow-sm">
+        <div class="col" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '${p.id}')">
+            <div class="card h-100 shadow-sm d-flex flex-column">
                 <img src="${escapeHtml(getImageUrl(p.image_path || ''))}" alt="${escapeHtml(p.name)}"
                      class="card-img-top product-img"
                      onerror="this.src='${grey}'">
@@ -191,7 +191,11 @@ function buildProductCard(p) {
                     <h6 class="card-title mb-1">${escapeHtml(p.name)}</h6>
                     <p class="text-muted small mb-1">${escapeHtml(p.category_name || '')}</p>
                     <p class="text-warning mb-1">${buildStarRating(parseFloat(p.rating))} ${rating}</p>
-                    <p class="fw-bold mt-auto mb-0">€ ${escapeHtml(price)}</p>
+                    <p class="fw-bold mb-2">€ ${escapeHtml(price)}</p>
+                    <a href="#" class="btn btn-sm btn-primary mt-auto"
+                       onclick="event.preventDefault(); addToCart({id: ${p.id}})">
+                        In den Warenkorb legen
+                    </a>
                 </div>
             </div>
         </div>`;

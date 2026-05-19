@@ -24,6 +24,9 @@
 //   createProduct   – admin: add a new product (with image upload)
 //   updateProduct   – admin: edit a product   (with optional image)
 //   deleteProduct   – admin: remove a product
+//   placeOrder      – create a new order from cart items (requires login)
+//   getUserOrders   – get all orders for the current user (requires login)
+//   getOrderDetails – get detailed info for a specific order (requires login)
 // ============================================================
 
 session_start();
@@ -31,9 +34,11 @@ session_start();
 // Load the model classes so we can use their methods below.
 require_once __DIR__ . '/../models/user.class.php';
 require_once __DIR__ . '/../models/product.class.php';
+require_once __DIR__ . '/../models/order.class.php';
 
 $userModel    = new User();
 $productModel = new Product();
+$orderModel   = new Order();
 
 // When TECHSHOP_DEBUG is true, real error messages are shown in responses.
 // Keep this false/unset in production so users never see PHP internals!
@@ -257,6 +262,57 @@ if ($action === 'register') {
         $response = ['status' => 'error', 'message' => $message];
     }
 
+} elseif ($action === 'cartGet') {
+
+    $cart = $_SESSION['cart'] ?? [];
+    $products = $productModel->getProductsByIds(array_keys($cart));
+    $items = [];
+
+    foreach ($products as $p) {
+        $qty = (int)($cart[$p['id']] ?? 0);
+        if ($qty > 0) {
+            $p['qty'] = $qty;
+            $items[] = $p;
+        }
+    }
+
+    $response = ['status' => 'success', 'items' => $items, 'count' => array_sum($cart)];
+
+} elseif ($action === 'cartAdd') {
+
+    $productId = (int)($data['productId'] ?? 0);
+    if ($productId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungueltiges Produkt.']);
+        exit;
+    }
+    if (empty($productModel->getProductsByIds([$productId]))) {
+        echo json_encode(['status' => 'error', 'message' => 'Produkt nicht gefunden.']);
+        exit;
+    }
+
+    if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
+    $_SESSION['cart'][$productId] = (int)($_SESSION['cart'][$productId] ?? 0) + 1;
+
+    $response = ['status' => 'success', 'message' => 'Produkt wurde in den Warenkorb gelegt.', 'count' => array_sum($_SESSION['cart'])];
+
+} elseif ($action === 'cartUpdate') {
+
+    $productId = (int)($data['productId'] ?? 0);
+    $qty = max(0, (int)($data['qty'] ?? 0));
+    if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
+
+    if ($productId > 0) {
+        if ($qty === 0) unset($_SESSION['cart'][$productId]);
+        else $_SESSION['cart'][$productId] = $qty;
+    }
+
+    $response = ['status' => 'success', 'count' => array_sum($_SESSION['cart'])];
+
+} elseif ($action === 'cartClear') {
+
+    $_SESSION['cart'] = [];
+    $response = ['status' => 'success', 'count' => 0];
+
 
 // ==============================================================
 // ACTION: createProduct  (admin only)
@@ -372,9 +428,101 @@ if ($action === 'register') {
         $message  = $debugMode ? 'deleteProduct Exception: ' . $e->getMessage() : 'Produkt konnte nicht gelöscht werden.';
         $response = ['status' => 'error', 'message' => $message];
     }
-}
 
-// Send the response back to the browser as JSON.
+
+// ==============================================================
+// ACTION: placeOrder
+// Create a new order from cart items (requires login).
+// ==============================================================
+} elseif ($action === 'placeOrder') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Bitte melden Sie sich an.']);
+        exit;
+    }
+
+    $cart = $_SESSION['cart'] ?? [];
+    $products = $productModel->getProductsByIds(array_keys($cart));
+    $items = [];
+
+    foreach ($products as $p) {
+        $qty = (int)($cart[$p['id']] ?? 0);
+        if ($qty > 0) {
+            $items[] = ['productId' => (int)$p['id'], 'quantity' => $qty, 'price' => (float)$p['price']];
+        }
+    }
+
+    if (empty($items) || !is_array($items)) {
+        echo json_encode(['status' => 'error', 'message' => 'Warenkorb ist leer.']);
+        exit;
+    }
+
+    try {
+        $paymentMethod = trim((string)($data['paymentMethod'] ?? ''));
+        $couponCode = trim((string)($data['couponCode'] ?? ''));
+        $orderId = $orderModel->placeOrder($_SESSION['user_id'], $items, $paymentMethod, $couponCode);
+        $_SESSION['cart'] = [];
+        $response = [
+            'status'   => 'success',
+            'message'  => 'Bestellung erfolgreich!',
+            'order_id' => $orderId
+        ];
+
+    } catch (Throwable $e) {
+        error_log('TechShopHub placeOrder error: ' . $e->getMessage());
+        $message  = $debugMode ? 'placeOrder Exception: ' . $e->getMessage() : 'Bestellung fehlgeschlagen.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+
+// ==============================================================
+// ACTION: getUserOrders
+// ==============================================================
+} elseif ($action === 'getUserOrders') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Bitte melden Sie sich an.']);
+        exit;
+    }
+
+    try {
+        $orders = $orderModel->getUserOrders($_SESSION['user_id']);
+        $response = ['status' => 'success', 'orders' => $orders];
+
+    } catch (Throwable $e) {
+        error_log('TechShopHub getUserOrders error: ' . $e->getMessage());
+        $message  = $debugMode ? 'getUserOrders Exception: ' . $e->getMessage() : 'Bestellungen konnten nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+
+// ==============================================================
+// ACTION: getOrderDetails
+// ==============================================================
+} elseif ($action === 'getOrderDetails') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Bitte melden Sie sich an.']);
+        exit;
+    }
+
+    $orderId = (int) ($data['orderId'] ?? 0);
+
+    if ($orderId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungültige Bestellungs-ID.']);
+        exit;
+    }
+
+    try {
+        $orderData = $orderModel->getOrderDetails($orderId, $_SESSION['user_id']);
+        $response = ['status' => 'success', 'data' => $orderData];
+
+    } catch (Throwable $e) {
+        error_log('TechShopHub getOrderDetails error: ' . $e->getMessage());
+        $message  = $debugMode ? 'getOrderDetails Exception: ' . $e->getMessage() : 'Bestellung konnte nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+}
 echo json_encode($response);
 
 
