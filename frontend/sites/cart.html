@@ -7,9 +7,6 @@
     <link rel="stylesheet" href="../res/css/style.css">
     <script src="../js/navbar.js" defer></script>
     <script src="../js/cart.js" defer></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', initCart);
-    </script>
 </head>
 <body class="bg-light">
 
@@ -40,18 +37,27 @@
     <div class="row">
         <div class="col-md-8">
             <a href="../index.html" class="btn btn-secondary">← Weitereinkaufen</a>
-            <button class="btn btn-warning ms-2" onclick="if(confirm('Leeren?')) { localStorage.removeItem('techshop_cart'); location.reload(); }">🗑️ Leeren</button>
+            <button class="btn btn-warning ms-2" onclick="if(confirm('Leeren?')) clearCart()">Leeren</button>
         </div>
         <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Zusammenfassung</h5>
                     <hr>
+                    <label class="form-label" for="payment-method">Zahlungsart</label>
+                    <select id="payment-method" class="form-select mb-3">
+                        <option value="">Bitte auswaehlen</option>
+                        <option value="Gespeicherte Zahlung">Gespeicherte Zahlung</option>
+                        <option value="Gutschein">Gutschein</option>
+                    </select>
+                    <label class="form-label" for="coupon-code">Gutschein</label>
+                    <input id="coupon-code" class="form-control mb-3" placeholder="z.B. GUTSCHEIN10">
                     <div class="d-flex justify-content-between mb-3">
                         <strong>Gesamtpreis:</strong>
-                        <strong>€ <span id="cart-total">0.00</span></strong>
+                        <strong>EUR <span id="cart-total">0.00</span></strong>
                     </div>
                     <button class="btn btn-success w-100" onclick="placeOrder()">✓ Bestellen</button>
+                    <a href="orders.html" class="btn btn-outline-secondary w-100 mt-2">Meine Bestellungen</a>
                 </div>
             </div>
         </div>

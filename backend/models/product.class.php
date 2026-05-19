@@ -184,6 +184,22 @@ class Product
         return $stmt->fetchAll();
     }
 
+    public function getProductsByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        if (empty($ids)) return [];
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare("
+            SELECT p.*, c.name AS category_name
+            FROM products p
+            JOIN categories c ON c.id = p.category_id
+            WHERE p.id IN ($placeholders)
+        ");
+        $stmt->execute($ids);
+        return $stmt->fetchAll();
+    }
+
     // ----------------------------------------------------------
     // Delete a product by its ID.
     //

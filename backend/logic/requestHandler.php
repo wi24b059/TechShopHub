@@ -262,6 +262,57 @@ if ($action === 'register') {
         $response = ['status' => 'error', 'message' => $message];
     }
 
+} elseif ($action === 'cartGet') {
+
+    $cart = $_SESSION['cart'] ?? [];
+    $products = $productModel->getProductsByIds(array_keys($cart));
+    $items = [];
+
+    foreach ($products as $p) {
+        $qty = (int)($cart[$p['id']] ?? 0);
+        if ($qty > 0) {
+            $p['qty'] = $qty;
+            $items[] = $p;
+        }
+    }
+
+    $response = ['status' => 'success', 'items' => $items, 'count' => array_sum($cart)];
+
+} elseif ($action === 'cartAdd') {
+
+    $productId = (int)($data['productId'] ?? 0);
+    if ($productId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungueltiges Produkt.']);
+        exit;
+    }
+    if (empty($productModel->getProductsByIds([$productId]))) {
+        echo json_encode(['status' => 'error', 'message' => 'Produkt nicht gefunden.']);
+        exit;
+    }
+
+    if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
+    $_SESSION['cart'][$productId] = (int)($_SESSION['cart'][$productId] ?? 0) + 1;
+
+    $response = ['status' => 'success', 'message' => 'Produkt wurde in den Warenkorb gelegt.', 'count' => array_sum($_SESSION['cart'])];
+
+} elseif ($action === 'cartUpdate') {
+
+    $productId = (int)($data['productId'] ?? 0);
+    $qty = max(0, (int)($data['qty'] ?? 0));
+    if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
+
+    if ($productId > 0) {
+        if ($qty === 0) unset($_SESSION['cart'][$productId]);
+        else $_SESSION['cart'][$productId] = $qty;
+    }
+
+    $response = ['status' => 'success', 'count' => array_sum($_SESSION['cart'])];
+
+} elseif ($action === 'cartClear') {
+
+    $_SESSION['cart'] = [];
+    $response = ['status' => 'success', 'count' => 0];
+
 
 // ==============================================================
 // ACTION: createProduct  (admin only)
@@ -390,7 +441,16 @@ if ($action === 'register') {
         exit;
     }
 
-    $items = $data['items'] ?? [];
+    $cart = $_SESSION['cart'] ?? [];
+    $products = $productModel->getProductsByIds(array_keys($cart));
+    $items = [];
+
+    foreach ($products as $p) {
+        $qty = (int)($cart[$p['id']] ?? 0);
+        if ($qty > 0) {
+            $items[] = ['productId' => (int)$p['id'], 'quantity' => $qty, 'price' => (float)$p['price']];
+        }
+    }
 
     if (empty($items) || !is_array($items)) {
         echo json_encode(['status' => 'error', 'message' => 'Warenkorb ist leer.']);
@@ -398,7 +458,10 @@ if ($action === 'register') {
     }
 
     try {
-        $orderId = $orderModel->placeOrder($_SESSION['user_id'], $items);
+        $paymentMethod = trim((string)($data['paymentMethod'] ?? ''));
+        $couponCode = trim((string)($data['couponCode'] ?? ''));
+        $orderId = $orderModel->placeOrder($_SESSION['user_id'], $items, $paymentMethod, $couponCode);
+        $_SESSION['cart'] = [];
         $response = [
             'status'   => 'success',
             'message'  => 'Bestellung erfolgreich!',

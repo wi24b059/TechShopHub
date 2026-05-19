@@ -27,6 +27,15 @@ window.getImageUrl = function (path) {
     // Already absolute (starts with / or http) → use directly.
     if (path.startsWith('/') || path.startsWith('http')) return path;
 
+    if (path.startsWith('res/')) {
+        const currentPath = window.location.pathname;
+        const frontendIndex = currentPath.indexOf('/frontend/');
+        const frontendRoot = frontendIndex !== -1
+            ? currentPath.substring(0, frontendIndex + '/frontend'.length)
+            : '';
+        return frontendRoot + '/' + path;
+    }
+
     // Old relative path like "backend/productpictures/..." – resolve against project root.
     // getApiUrl() = https://localhost/TechShopHub/backend/logic/requestHandler.php
     // Project root  = https://localhost/TechShopHub
@@ -81,6 +90,8 @@ window.escapeHtml = function (text) {
                     🛍️ Warenkorb
                     <span id="cart-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger ps-2 pe-2" hidden>0</span>
                 </a>
+                <a id="nav-orders-link" href="${base}sites/orders.html"
+                   class="btn btn-sm btn-outline-info" hidden>Bestellungen</a>
                 <a id="nav-admin-link" href="${base}sites/admin.html"
                    class="btn btn-sm btn-outline-warning" hidden>⚙️ Admin</a>
                 <a id="nav-login-link" href="${base}sites/login.html"
@@ -98,6 +109,7 @@ window.escapeHtml = function (text) {
     window.updateNavbar = function (session) {
         const usernameEl = document.getElementById('nav-username');
         const adminLink  = document.getElementById('nav-admin-link');
+        const ordersLink = document.getElementById('nav-orders-link');
         const loginLink  = document.getElementById('nav-login-link');
         const logoutBtn  = document.getElementById('nav-logout-btn');
 
@@ -106,12 +118,14 @@ window.escapeHtml = function (text) {
             usernameEl.textContent = `${session.username} (${role})`;
 
             if (adminLink) adminLink.hidden = !session.is_admin;
+            if (ordersLink) ordersLink.hidden = false;
             if (loginLink) loginLink.hidden = true;
             if (logoutBtn) logoutBtn.hidden = false;
         } else {
             usernameEl.textContent = '';
 
             if (adminLink) adminLink.hidden = true;
+            if (ordersLink) ordersLink.hidden = true;
             if (loginLink) loginLink.hidden = false;
             if (logoutBtn) logoutBtn.hidden = true;
         }

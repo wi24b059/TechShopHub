@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="420" viewBox="0 0 600 420" role="img" aria-labelledby="title desc">
+  <title id="title">Produktbild Platzhalter</title>
+  <desc id="desc">Neutraler Platzhalter fuer TechShopHub Produktbilder.</desc>
+  <rect width="600" height="420" fill="#f1f3f5"/>
+  <rect x="42" y="42" width="516" height="336" rx="12" fill="#ffffff" stroke="#ced4da" stroke-width="3"/>
+  <path d="M180 276l72-84 54 60 42-48 72 72H180z" fill="#adb5bd"/>
+  <circle cx="390" cy="150" r="34" fill="#dee2e6"/>
+  <text x="300" y="332" text-anchor="middle" fill="#495057" font-family="Arial, sans-serif" font-size="24">Kein Bild verfuegbar</text>
+</svg>
