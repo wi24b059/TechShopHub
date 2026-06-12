@@ -770,7 +770,7 @@ function handleProductImageUpload(string $fieldName): array
 // --------------------------------------------------------------
 // setPersistentSessionCookie()
 // Override the default session cookie so it survives a browser
-// restart (used for the "remember me" feature).
+// restart (used for the "remember me" feature)
 // --------------------------------------------------------------
 function setPersistentSessionCookie(int $seconds): void
 {
