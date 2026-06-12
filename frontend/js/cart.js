@@ -152,19 +152,138 @@ function loadOrderDetails(id) {
         const items = r.data.items || [];
         const order = r.data.order || {};
         box.innerHTML = `
-            <h2 class="h5">Bestellung #${id}</h2>
-            <p>Zahlung: ${escapeHtml(order.payment_method || '-')}<br>
-               Gutschein: ${escapeHtml(order.coupon_code || '-')}<br>
-               Rabatt: EUR ${Number(order.discount || 0).toFixed(2)}</p>
-            <ul class="list-group">
-                ${items.map(i => `<li class="list-group-item">${escapeHtml(i.name)} x ${i.quantity} - EUR ${Number(i.price_at_purchase).toFixed(2)}</li>`).join('')}
-            </ul>
-        `;
+    <h2 class="h5">Bestellung #${id}</h2>
+
+    <p>
+        Zahlung: ${escapeHtml(order.payment_method || '-')}<br>
+        Gutschein: ${escapeHtml(order.coupon_code || '-')}<br>
+        Rabatt: EUR ${Number(order.discount || 0).toFixed(2)}
+    </p>
+
+    <ul class="list-group mb-3">
+        ${items.map(i => `
+            <li class="list-group-item">
+                ${escapeHtml(i.name)}
+                x ${i.quantity}
+                - EUR ${Number(i.price_at_purchase).toFixed(2)}
+            </li>
+        `).join('')}
+    </ul>
+
+    <button
+        class="btn btn-primary"
+        onclick='printInvoice(${JSON.stringify(JSON.stringify({
+            id: id
+        }))})'>
+        Rechnung drucken
+    </button>
+`;
     });
 }
+function printInvoice(orderId)
+{
+    api({
+        action: 'getOrderDetails',
+        orderId: orderId
+    }).then(r => {
 
+        if (r.status !== 'success') return;
+
+        const items = r.data.items || [];
+        const order = r.data.order || {};
+
+        const total =
+            items.reduce(
+                (sum, item) =>
+                    sum +
+                    Number(item.price_at_purchase) *
+                    Number(item.quantity),
+                0
+            );
+
+        const popup = window.open('', '_blank');
+
+        popup.document.write(`
+            <html>
+            <head>
+                <title>Rechnung ${orderId}</title>
+
+                <style>
+                    body{
+                        font-family: Arial;
+                        padding:20px;
+                    }
+
+                    table{
+                        width:100%;
+                        border-collapse:collapse;
+                    }
+
+                    th,td{
+                        border:1px solid #ccc;
+                        padding:8px;
+                    }
+                </style>
+            </head>
+
+            <body>
+
+                <h1>TechShopHub Rechnung</h1>
+
+                <p>
+                    <strong>Rechnungsnummer:</strong>
+                    R-${orderId}
+                </p>
+
+                <p>
+                    <strong>Datum:</strong>
+                    ${order.created_at || ''}
+                </p>
+
+                <p>
+                    <strong>Zahlung:</strong>
+                    ${order.payment_method || '-'}
+                </p>
+
+                <table>
+
+                    <tr>
+                        <th>Produkt</th>
+                        <th>Menge</th>
+                        <th>Preis</th>
+                    </tr>
+
+                    ${items.map(item => `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td>${item.quantity}</td>
+                            <td>
+                                EUR ${Number(item.price_at_purchase).toFixed(2)}
+                            </td>
+                        </tr>
+                    `).join('')}
+
+                </table>
+
+                <br>
+
+                <h3>
+                    Gesamtbetrag:
+                    EUR ${total.toFixed(2)}
+                </h3>
+
+            </body>
+            </html>
+        `);
+
+        popup.document.close();
+
+        setTimeout(() => popup.print(), 300);
+    });
+}
 document.addEventListener('DOMContentLoaded', () => {
     initCart();
     initCartDrop();
     initOrders();
 });
+window.printInvoice = printInvoice;
