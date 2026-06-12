@@ -107,6 +107,99 @@ class User
         return $user;
     }
 
+
+    //------------------------------------------------------
+    // Kundenkonto
+    //------------------------------------------------------
+
+   public function getUserById(int $id): ?array
+       {
+         $stmt = $this->db->prepare(
+               'SELECT
+                   id,
+                   salutation,
+                   first_name,
+                   last_name,
+                   address,
+                   zip,
+                   city,
+                   email,
+                   username,
+                   payment_info,
+                   is_admin
+                FROM users
+                WHERE id = :id
+                LIMIT 1'
+           );
+           $stmt->execute([
+               ':id' => $id
+           ]);
+
+           $user = $stmt->fetch(PDO::FETCH_ASSOC);
+           if ($user === false) {
+               return null;
+           }
+           return $user;
+       }
+
+       public function updateUser(
+           int $id,
+           string $firstname,
+           string $lastname,
+           string $address,
+           string $zip,
+           string $city,
+           string $payment
+
+       ): bool {
+           $stmt = $this->db->prepare(
+
+               'UPDATE users
+
+                SET
+
+                   first_name = :firstname,
+                   last_name = :lastname,
+                   address = :address,
+                   zip = :zip,
+                   city = :city,
+                   payment_info = :payment
+                WHERE id = :id'
+
+           );
+           return $stmt->execute([
+
+               ':firstname' => $firstname,
+               ':lastname'  => $lastname,
+               ':address'   => $address,
+               ':zip'       => $zip,
+               ':city'      => $city,
+               ':payment'   => $payment,
+               ':id'        => $id
+           ]);
+       }
+
+       // ==========================================================
+       // Admin Customer Management
+       // ==========================================================
+       public function getAllUsers(): array
+       {
+          $stmt = $this->db->query(
+
+               'SELECT
+                   id,
+                   first_name,
+                   last_name,
+                   email,
+                   username,
+                   city,
+                   is_admin
+                FROM users
+                ORDER BY last_name ASC'
+           );
+           return $stmt->fetchAll(PDO::FETCH_ASSOC);
+     }
+
     // ----------------------------------------------------------
     // (Private helper) Check if an email or username is already
     // in the database.

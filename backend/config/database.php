@@ -29,11 +29,11 @@ class Database
 
         // Read config from environment variables.
         // If a variable is not set, we fall back to a sensible local default.
-        $host     = getenv('TECHSHOP_DB_HOST') ?: '127.0.0.1';
+        $host     = getenv('TECHSHOP_DB_HOST') ?: 'localhost';
         $port     = getenv('TECHSHOP_DB_PORT') ?: '3306';
         $dbName   = getenv('TECHSHOP_DB_NAME') ?: 'techshophub';
         $user     = getenv('TECHSHOP_DB_USER') ?: 'root';
-        $password = getenv('TECHSHOP_DB_PASS') ?: '';
+        $password = getenv('TECHSHOP_DB_PASS') ?: 'root';
 
         // The DSN (Data Source Name) tells PDO how to reach the database.
         $dsn = "mysql:host=$host;port=$port;dbname=$dbName;charset=utf8mb4";

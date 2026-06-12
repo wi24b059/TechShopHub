@@ -523,6 +523,84 @@ if ($action === 'register') {
         $response = ['status' => 'error', 'message' => $message];
     }
 }
+// ==============================================================
+// ACTION: getProfile
+// ==============================================================
+elseif ($action === 'getProfile') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Bitte anmelden.'
+        ]);
+        exit;
+    }
+
+    try {
+
+        $user = $userModel->getUserById(
+            (int) $_SESSION['user_id']
+        );
+
+        $response = [
+            'status' => 'success',
+            'user'   => $user
+        ];
+
+    } catch (Throwable $e) {
+
+        error_log('TechShopHub getProfile error: ' . $e->getMessage());
+
+        $response = [
+            'status'  => 'error',
+            'message' => 'Profil konnte nicht geladen werden.'
+        ];
+    }
+}
+
+
+// ==============================================================
+// ACTION: updateProfile
+// ==============================================================
+elseif ($action === 'updateProfile') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Bitte anmelden.'
+        ]);
+        exit;
+    }
+
+    try {
+
+        $success = $userModel->updateUser(
+            (int) $_SESSION['user_id'],
+            trim((string)($data['firstname'] ?? '')),
+            trim((string)($data['lastname'] ?? '')),
+            trim((string)($data['address'] ?? '')),
+            trim((string)($data['zip'] ?? '')),
+            trim((string)($data['city'] ?? '')),
+            trim((string)($data['payment'] ?? ''))
+        );
+
+        $response = [
+            'status'  => $success ? 'success' : 'error',
+            'message' => $success
+                ? 'Profil erfolgreich gespeichert.'
+                : 'Profil konnte nicht gespeichert werden.'
+        ];
+
+    } catch (Throwable $e) {
+
+        error_log('TechShopHub updateProfile error: ' . $e->getMessage());
+
+        $response = [
+            'status'  => 'error',
+            'message' => 'Profil konnte nicht gespeichert werden.'
+        ];
+    }
+}
 echo json_encode($response);
 
 
