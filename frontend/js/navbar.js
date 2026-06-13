@@ -83,7 +83,7 @@ window.escapeHtml = function (text) {
     // Insert the navbar as the very first child of <body>.
     document.body.insertAdjacentHTML('afterbegin', `
         <nav class="navbar navbar-expand navbar-dark bg-dark px-3 mb-4">
-            <a class="navbar-brand fw-bold" href="${base}index.html">🏠 TechShopHub</a>
+            <a class="navbar-brand fw-bold" href="${base}index.html"> TechShopHub</a>
             <div class="d-flex align-items-center gap-2 ms-auto">
                 <span id="nav-username" class="text-white-50 small"></span>
                 <a id="nav-account-link" href="${base}sites/kundenkonto.html"
