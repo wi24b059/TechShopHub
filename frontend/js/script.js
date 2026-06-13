@@ -188,7 +188,11 @@ function buildProductCard(p) {
                      class="card-img-top product-img"
                      onerror="this.src='${grey}'">
                 <div class="card-body d-flex flex-column">
-                    <h6 class="card-title mb-1">${escapeHtml(p.name)}</h6>
+                    <h6 class="card-title mb-1">
+                         <a href="sites/product.html?id=${p.id}">
+                         ${escapeHtml(p.name)}
+                          </a>
+                    </h6>
                     <p class="text-muted small mb-1">${escapeHtml(p.category_name || '')}</p>
                     <p class="text-warning mb-1">${buildStarRating(parseFloat(p.rating))} ${rating}</p>
                     <p class="fw-bold mb-2">€ ${escapeHtml(price)}</p>
@@ -266,3 +270,25 @@ function showMessage(message, type) {
     const cls = type === 'success' ? 'alert-success' : 'alert-danger';
     box.innerHTML = `<div class="alert ${cls} mb-0">${message}</div>`;
 }
+function loadProductPage() {
+
+    const box = document.getElementById('product-details');
+
+    if (!box) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('id');
+
+    box.innerHTML = `
+        <div class="card">
+            <div class="card-body">
+                <h2>Produkt #${productId}</h2>
+                <p>Detailseite wurde erfolgreich geöffnet.</p>
+                <p>Produkt-ID: ${productId}</p>
+            </div>
+        </div>
+    `;
+}
+document.addEventListener('DOMContentLoaded', () => {
+    loadProductPage();
+});

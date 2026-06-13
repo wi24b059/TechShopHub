@@ -86,12 +86,14 @@ window.escapeHtml = function (text) {
             <a class="navbar-brand fw-bold" href="${base}index.html">🛒 TechShopHub</a>
             <div class="d-flex align-items-center gap-2 ms-auto">
                 <span id="nav-username" class="text-white-50 small"></span>
+                <a id="nav-account-link" href="${base}sites/kundenkonto.html"
+                    class="btn btn-sm btn-outline-success">👤 Mein Konto</a>  
                 <a id="nav-cart-link" href="${base}sites/cart.html" class="btn btn-sm btn-outline-info position-relative">
                     🛍️ Warenkorb
                     <span id="cart-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger ps-2 pe-2" hidden>0</span>
                 </a>
                 <a id="nav-orders-link" href="${base}sites/orders.html"
-                   class="btn btn-sm btn-outline-info" hidden>Bestellungen</a>
+                   class="btn btn-sm btn-outline-info" hidden>Bestellungen</a> 
                 <a id="nav-admin-link" href="${base}sites/admin.html"
                    class="btn btn-sm btn-outline-warning" hidden>⚙️ Admin</a>
                 <a id="nav-login-link" href="${base}sites/login.html"
@@ -110,17 +112,19 @@ window.escapeHtml = function (text) {
         const usernameEl = document.getElementById('nav-username');
         const adminLink  = document.getElementById('nav-admin-link');
         const ordersLink = document.getElementById('nav-orders-link');
+        const accountLink = document.getElementById('nav-account-link');
         const loginLink  = document.getElementById('nav-login-link');
         const logoutBtn  = document.getElementById('nav-logout-btn');
 
         if (session && session.logged_in) {
             const role = session.is_admin ? 'Administrator' : 'User';
-            usernameEl.textContent = `${session.username} (${role})`;
+            usernameEl.textContent = `Hi ${session.username} (${role})`;
 
             if (adminLink) adminLink.hidden = !session.is_admin;
             if (ordersLink) ordersLink.hidden = false;
             if (loginLink) loginLink.hidden = true;
             if (logoutBtn) logoutBtn.hidden = false;
+            if (accountLink) accountLink.hidden = false;
         } else {
             usernameEl.textContent = '';
 
@@ -128,6 +132,7 @@ window.escapeHtml = function (text) {
             if (ordersLink) ordersLink.hidden = true;
             if (loginLink) loginLink.hidden = false;
             if (logoutBtn) logoutBtn.hidden = true;
+            if (accountLink) accountLink.hidden = true;
         }
     };
 
