@@ -188,11 +188,11 @@ function buildProductCard(p) {
                      class="card-img-top product-img"
                      onerror="this.src='${grey}'">
                 <div class="card-body d-flex flex-column">
-                    <h6 class="card-title mb-1">
-                         <a href="sites/product.html?id=${p.id}">
+                   <h6 class="card-title mb-1">
+                        <a href="sites/product.html?id=${p.id}&name=${encodeURIComponent(p.name)}&price=${p.price}&rating=${p.rating}&description=${encodeURIComponent(p.description)}&category=${encodeURIComponent(p.category_name || '')}">
                          ${escapeHtml(p.name)}
-                          </a>
-                    </h6>
+                        </a>
+                   </h6>
                     <p class="text-muted small mb-1">${escapeHtml(p.category_name || '')}</p>
                     <p class="text-warning mb-1">${buildStarRating(parseFloat(p.rating))} ${rating}</p>
                     <p class="fw-bold mb-2">€ ${escapeHtml(price)}</p>
