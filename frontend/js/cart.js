@@ -169,14 +169,6 @@ function loadOrderDetails(id) {
             </li>
         `).join('')}
     </ul>
-
-    <button
-        class="btn btn-primary"
-        onclick='printInvoice(${JSON.stringify(JSON.stringify({
-            id: id
-        }))})'>
-        Rechnung drucken
-    </button>
 `;
     });
 }
