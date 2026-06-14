@@ -7,6 +7,8 @@
 //   - Create new product (multipart/form-data with image)
 //   - Edit existing product (Bootstrap modal, optional new image)
 //   - Delete product (with confirmation dialog)
+//   - Load all users, toggle active status, inspect user orders
+//   - Remove single order items from customer orders
 //
 // Requires navbar.js (loaded first → provides getApiUrl, escapeHtml).
 // Requires Bootstrap JS bundle (for modal and collapse).
@@ -16,6 +18,9 @@
 // Cache the loaded products so the edit modal can look up data
 // without a second server request.
 let allProducts = [];
+let allUsers = [];
+let activeUserId = 0;
+let activeOrderId = 0;
 
 // ============================================================
 // ON PAGE LOAD
@@ -25,6 +30,7 @@ let allProducts = [];
 // here – no need to wrap them in a DOMContentLoaded listener.
 checkAdminAccess();   // Redirect non-admins
 loadAllProducts();    // Fill the product table
+loadAllUsers();       // Fill the users table
 setupCreateForm();    // Wire up create form
 setupEditForm();      // Wire up edit modal
 
@@ -103,6 +109,230 @@ function buildProductRow(p) {
 function setTableContent(html) {
     const tbody = document.getElementById('product-table-body');
     if (tbody) tbody.innerHTML = html;
+}
+
+// ============================================================
+// USER TABLE
+// ============================================================
+function loadAllUsers() {
+    setUsersTableContent('<tr><td colspan="7" class="text-center text-muted py-3">Wird geladen…</td></tr>');
+
+    fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getAllUsers' })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status === 'success') {
+            allUsers = result.users || [];
+            renderUsersTable(allUsers);
+        } else {
+            setUsersTableContent(`<tr><td colspan="7" class="text-center text-danger py-3">${escapeHtml(result.message || 'Kunden konnten nicht geladen werden.')}</td></tr>`);
+        }
+    })
+    .catch(() => {
+        setUsersTableContent('<tr><td colspan="7" class="text-center text-danger py-3">Laden fehlgeschlagen.</td></tr>');
+    });
+}
+
+function renderUsersTable(users) {
+    if (!users.length) {
+        setUsersTableContent('<tr><td colspan="7" class="text-center text-muted py-3">Keine Kunden gefunden.</td></tr>');
+        return;
+    }
+
+    document.getElementById('users-table-body').innerHTML = users.map(u => {
+        const fullName = `${escapeHtml(u.first_name || '')} ${escapeHtml(u.last_name || '')}`.trim();
+        const isActive = Number(u.is_active) === 1;
+        const statusBadge = isActive
+            ? '<span class="badge bg-success">Aktiv</span>'
+            : '<span class="badge bg-danger">Deaktiviert</span>';
+
+        return `
+            <tr>
+                <td>${Number(u.id)}</td>
+                <td>${fullName || '-'}</td>
+                <td>${escapeHtml(u.email || '')}</td>
+                <td>${escapeHtml(u.username || '')}</td>
+                <td>${escapeHtml(u.city || '')}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-${isActive ? 'danger' : 'success'} me-1"
+                            onclick="toggleUserStatus(${Number(u.id)})">
+                        ${isActive ? 'Deaktivieren' : 'Aktivieren'}
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary"
+                            onclick="openUserOrdersModal(${Number(u.id)})">
+                        Bestellungen ansehen
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function setUsersTableContent(html) {
+    const tbody = document.getElementById('users-table-body');
+    if (tbody) tbody.innerHTML = html;
+}
+
+function toggleUserStatus(userId) {
+    fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggleUserStatus', userId: Number(userId) })
+    })
+    .then(r => r.json())
+    .then(result => {
+        const type = result.status === 'success' ? 'success' : 'danger';
+        showInBox('users-message', result.message || 'Status konnte nicht geaendert werden.', type);
+        if (result.status === 'success') loadAllUsers();
+    })
+    .catch(err => showInBox('users-message', 'Serverfehler: ' + err.message, 'danger'));
+}
+
+// ============================================================
+// USER ORDERS (ADMIN)
+// ============================================================
+function openUserOrdersModal(userId) {
+    activeUserId = Number(userId);
+    activeOrderId = 0;
+
+    showInBox('user-orders-message', '', 'success');
+    const details = document.getElementById('user-order-details');
+    if (details) details.innerHTML = '';
+
+    const modalEl = document.getElementById('userOrdersModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    loadOrdersForActiveUser();
+}
+
+function loadOrdersForActiveUser() {
+    const list = document.getElementById('user-orders-list');
+    if (!list) return;
+
+    list.innerHTML = '<div class="text-muted">Bestellungen werden geladen…</div>';
+
+    fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getUserOrdersAdmin', userId: activeUserId })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status !== 'success') {
+            list.innerHTML = `<div class="alert alert-danger mb-0">${escapeHtml(result.message || 'Bestellungen konnten nicht geladen werden.')}</div>`;
+            return;
+        }
+
+        const orders = result.orders || [];
+        if (!orders.length) {
+            list.innerHTML = '<div class="text-muted">Keine Bestellungen vorhanden.</div>';
+            return;
+        }
+
+        list.innerHTML = orders.map(order => `
+            <button class="list-group-item list-group-item-action" onclick="loadOrderDetailsAdmin(${Number(order.id)})">
+                Bestellung #${Number(order.id)} - EUR ${Number(order.total_price).toFixed(2)} - ${escapeHtml(order.created_at || '')}
+            </button>
+        `).join('');
+    })
+    .catch(err => {
+        list.innerHTML = `<div class="alert alert-danger mb-0">Serverfehler: ${escapeHtml(err.message)}</div>`;
+    });
+}
+
+function loadOrderDetailsAdmin(orderId) {
+    activeOrderId = Number(orderId);
+    const details = document.getElementById('user-order-details');
+    if (!details) return;
+
+    details.innerHTML = '<div class="text-muted">Details werden geladen…</div>';
+
+    fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getOrderDetailsAdmin', orderId: activeOrderId })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status !== 'success') {
+            details.innerHTML = `<div class="alert alert-danger">${escapeHtml(result.message || 'Details konnten nicht geladen werden.')}</div>`;
+            return;
+        }
+
+        const order = result.data.order || {};
+        const items = result.data.items || [];
+
+        details.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="h6 mb-3">Bestellung #${Number(order.id || activeOrderId)}</h3>
+                    <p class="mb-3 small text-muted">
+                        Zahlung: ${escapeHtml(order.payment_method || '-')}<br>
+                        Gutschein: ${escapeHtml(order.coupon_code || '-')}<br>
+                        Rabatt: EUR ${Number(order.discount || 0).toFixed(2)}<br>
+                        Gesamt: EUR ${Number(order.total_price || 0).toFixed(2)}
+                    </p>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Produkt</th>
+                                    <th>Menge</th>
+                                    <th>Preis</th>
+                                    <th>Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${items.length ? items.map(item => `
+                                    <tr>
+                                        <td>${escapeHtml(item.name || '')}</td>
+                                        <td>${Number(item.quantity)}</td>
+                                        <td>EUR ${Number(item.price_at_purchase).toFixed(2)}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    onclick="removeOrderItem(${Number(order.id)}, ${Number(item.id)})">
+                                                Position loeschen
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="4" class="text-muted">Keine Positionen vorhanden.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    })
+    .catch(err => {
+        details.innerHTML = `<div class="alert alert-danger">Serverfehler: ${escapeHtml(err.message)}</div>`;
+    });
+}
+
+function removeOrderItem(orderId, orderItemId) {
+    if (!window.confirm('Diese Position wirklich aus der Bestellung entfernen?')) return;
+
+    fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'removeOrderItem', orderId: Number(orderId), orderItemId: Number(orderItemId) })
+    })
+    .then(r => r.json())
+    .then(result => {
+        const type = result.status === 'success' ? 'success' : 'danger';
+        showInBox('user-orders-message', result.message || 'Aktion fehlgeschlagen.', type);
+
+        if (result.status === 'success') {
+            loadOrderDetailsAdmin(Number(orderId));
+            loadOrdersForActiveUser();
+        }
+    })
+    .catch(err => showInBox('user-orders-message', 'Serverfehler: ' + err.message, 'danger'));
 }
 
 // ============================================================
@@ -224,4 +454,10 @@ function showInBox(boxId, message, type) {
     if (!box) return;
     box.innerHTML = message ? `<div class="alert alert-${type} py-2 mb-0">${escapeHtml(message)}</div>` : '';
 }
+
+// Expose customer helpers for inline button handlers.
+window.toggleUserStatus = toggleUserStatus;
+window.openUserOrdersModal = openUserOrdersModal;
+window.loadOrderDetailsAdmin = loadOrderDetailsAdmin;
+window.removeOrderItem = removeOrderItem;
 

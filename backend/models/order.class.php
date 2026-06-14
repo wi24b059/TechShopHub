@@ -96,5 +96,113 @@ class Order {
 
         return ['order' => $order, 'items' => $items];
     }
+
+    public function getOrdersByUserAdmin(int $userId): array {
+        $stmt = $this->db->prepare('
+            SELECT o.*, op.payment_method, op.coupon_code, op.discount
+            FROM orders o
+            LEFT JOIN order_payments op ON op.order_id = o.id
+            WHERE o.user_id = :uid
+            ORDER BY o.created_at DESC
+        ');
+        $stmt->execute([':uid' => $userId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getOrderDetailsAdmin(int $orderId): array {
+        $o = $this->db->prepare('
+            SELECT o.*, op.payment_method, op.coupon_code, op.discount
+            FROM orders o
+            LEFT JOIN order_payments op ON op.order_id = o.id
+            WHERE o.id = :id
+            LIMIT 1
+        ');
+        $o->execute([':id' => $orderId]);
+        $order = $o->fetch(PDO::FETCH_ASSOC);
+        if (!$order) throw new Exception('Order not found');
+
+        $i = $this->db->prepare('
+            SELECT oi.*, p.name
+            FROM order_items oi
+            JOIN products p ON p.id = oi.product_id
+            WHERE oi.order_id = :oid
+            ORDER BY oi.id ASC
+        ');
+        $i->execute([':oid' => $orderId]);
+        $items = $i->fetchAll(PDO::FETCH_ASSOC);
+
+        return ['order' => $order, 'items' => $items];
+    }
+
+    public function removeOrderItemAdmin(int $orderId, int $orderItemId): array {
+        $this->db->beginTransaction();
+
+        try {
+            $itemStmt = $this->db->prepare('
+                SELECT id
+                FROM order_items
+                WHERE id = :item_id AND order_id = :order_id
+                LIMIT 1
+            ');
+            $itemStmt->execute([
+                ':item_id' => $orderItemId,
+                ':order_id' => $orderId,
+            ]);
+
+            if (!$itemStmt->fetch(PDO::FETCH_ASSOC)) {
+                throw new Exception('Order item not found');
+            }
+
+            $deleteStmt = $this->db->prepare(
+                'DELETE FROM order_items WHERE id = :item_id AND order_id = :order_id'
+            );
+            $deleteStmt->execute([
+                ':item_id' => $orderItemId,
+                ':order_id' => $orderId,
+            ]);
+
+            $sumStmt = $this->db->prepare('
+                SELECT COALESCE(SUM(quantity * price_at_purchase), 0) AS subtotal
+                FROM order_items
+                WHERE order_id = :order_id
+            ');
+            $sumStmt->execute([':order_id' => $orderId]);
+            $subtotal = (float) ($sumStmt->fetchColumn() ?: 0);
+
+            $discountStmt = $this->db->prepare(
+                'SELECT discount FROM order_payments WHERE order_id = :order_id LIMIT 1'
+            );
+            $discountStmt->execute([':order_id' => $orderId]);
+            $discount = (float) ($discountStmt->fetchColumn() ?: 0);
+            $appliedDiscount = min($discount, $subtotal);
+
+            $updateDiscount = $this->db->prepare(
+                'UPDATE order_payments SET discount = :discount WHERE order_id = :order_id'
+            );
+            $updateDiscount->execute([
+                ':discount' => $appliedDiscount,
+                ':order_id' => $orderId,
+            ]);
+
+            $newTotal = max(0, $subtotal - $appliedDiscount);
+            $updateOrder = $this->db->prepare(
+                'UPDATE orders SET total_price = :total WHERE id = :order_id'
+            );
+            $updateOrder->execute([
+                ':total' => $newTotal,
+                ':order_id' => $orderId,
+            ]);
+
+            $this->db->commit();
+
+            return [
+                'order_id' => $orderId,
+                'total_price' => $newTotal,
+            ];
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
 }
 
