@@ -179,6 +179,35 @@ class User
            ]);
        }
 
+       public function verifyUserPassword(int $id, string $plainPassword): bool
+       {
+           $stmt = $this->db->prepare(
+               'SELECT password_hash FROM users WHERE id = :id LIMIT 1'
+           );
+           $stmt->execute([':id' => $id]);
+
+           $hash = $stmt->fetchColumn();
+           if ($hash === false) {
+               return false;
+           }
+
+           return password_verify($plainPassword, (string) $hash);
+       }
+
+       public function updatePasswordHash(int $id, string $passwordHash): bool
+       {
+           $stmt = $this->db->prepare(
+               'UPDATE users SET password_hash = :password_hash WHERE id = :id'
+           );
+
+           $stmt->execute([
+               ':password_hash' => $passwordHash,
+               ':id'            => $id,
+           ]);
+
+           return $stmt->rowCount() > 0;
+       }
+
        // ==========================================================
        // Admin Customer Management
        // ==========================================================
