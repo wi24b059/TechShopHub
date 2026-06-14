@@ -207,7 +207,7 @@ if ($action === 'register') {
             'status'    => 'success',
             'logged_in' => true,
             'username'  => $_SESSION['username'] ?? '',
-            'is_admin'  => !empty($_SESSION['is_admin']),
+            'is_admin'  => isset($_SESSION['is_admin']) && $_SESSION['is_admin'],
         ];
     } else {
         $response = ['status' => 'success', 'logged_in' => false];
@@ -573,6 +573,23 @@ elseif ($action === 'updateProfile') {
     }
 
     try {
+        $currentPassword = (string) ($data['currentPassword'] ?? '');
+
+        if ($currentPassword === '') {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Bitte aktuelles Passwort eingeben.'
+            ]);
+            exit;
+        }
+
+        if (!$userModel->verifyUserPassword((int) $_SESSION['user_id'], $currentPassword)) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Aktuelles Passwort ist falsch.'
+            ]);
+            exit;
+        }
 
         $success = $userModel->updateUser(
             (int) $_SESSION['user_id'],
@@ -598,6 +615,79 @@ elseif ($action === 'updateProfile') {
         $response = [
             'status'  => 'error',
             'message' => 'Profil konnte nicht gespeichert werden.'
+        ];
+    }
+}
+
+
+// ==============================================================
+// ACTION: updatePassword
+// ==============================================================
+elseif ($action === 'updatePassword') {
+
+    if (empty($_SESSION['user_id'])) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Bitte anmelden.'
+        ]);
+        exit;
+    }
+
+    try {
+        $oldPassword = (string) ($data['oldPassword'] ?? '');
+        $newPassword = (string) ($data['newPassword'] ?? '');
+        $newPasswordConfirm = (string) ($data['newPasswordConfirm'] ?? '');
+
+        if ($oldPassword === '' || $newPassword === '' || $newPasswordConfirm === '') {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Bitte alle Passwortfelder ausfuellen.'
+            ]);
+            exit;
+        }
+
+        if (!$userModel->verifyUserPassword((int) $_SESSION['user_id'], $oldPassword)) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Aktuelles Passwort ist falsch.'
+            ]);
+            exit;
+        }
+
+        if ($newPassword !== $newPasswordConfirm) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Die neuen Passwoerter stimmen nicht ueberein.'
+            ]);
+            exit;
+        }
+
+        $passwordError = validateNewPassword($newPassword);
+        if ($passwordError !== null) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => $passwordError
+            ]);
+            exit;
+        }
+
+        $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        $success = $userModel->updatePasswordHash((int) $_SESSION['user_id'], $newHash);
+
+        $response = [
+            'status'  => $success ? 'success' : 'error',
+            'message' => $success
+                ? 'Passwort erfolgreich geaendert.'
+                : 'Passwort konnte nicht geaendert werden.'
+        ];
+
+    } catch (Throwable $e) {
+
+        error_log('TechShopHub updatePassword error: ' . $e->getMessage());
+
+        $response = [
+            'status'  => 'error',
+            'message' => 'Passwort konnte nicht geaendert werden.'
         ];
     }
 }
@@ -689,6 +779,25 @@ function validateRegistrationData(array $data): array
     }
 
     return $errors;
+}
+
+
+// --------------------------------------------------------------
+// validateNewPassword()
+// Shared rule for password changes in the account area.
+// Returns null when valid, otherwise an error message.
+// --------------------------------------------------------------
+function validateNewPassword(string $password): ?string
+{
+    $passwordTooShort  = strlen($password) < 8;
+    $passwordNoLetter  = !preg_match('/[A-Za-z]/', $password);
+    $passwordNoNumber  = !preg_match('/[0-9]/', $password);
+
+    if ($passwordTooShort || $passwordNoLetter || $passwordNoNumber) {
+        return 'Passwort muss mindestens 8 Zeichen, einen Buchstaben und eine Zahl enthalten.';
+    }
+
+    return null;
 }
 
 
@@ -792,4 +901,3 @@ function setPersistentSessionCookie(int $seconds): void
     // Older PHP: smuggle SameSite into the path string (a common workaround).
     setcookie(session_name(), session_id(), time() + $seconds, '/; samesite=Lax', '', $isSecure, true);
 }
-

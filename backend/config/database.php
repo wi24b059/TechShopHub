@@ -33,7 +33,7 @@ class Database
         $port     = getenv('TECHSHOP_DB_PORT') ?: '3306';
         $dbName   = getenv('TECHSHOP_DB_NAME') ?: 'techshophub';
         $user     = getenv('TECHSHOP_DB_USER') ?: 'root';
-        $password = getenv('TECHSHOP_DB_PASS') ?: 'root';
+        $password = getenv('TECHSHOP_DB_PASS') ?: '';
 
         // The DSN (Data Source Name) tells PDO how to reach the database.
         $dsn = "mysql:host=$host;port=$port;dbname=$dbName;charset=utf8mb4";
@@ -51,4 +51,3 @@ class Database
         return self::$connection;
     }
 }
-
