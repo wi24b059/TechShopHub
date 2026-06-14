@@ -222,12 +222,41 @@ class User
                    email,
                    username,
                    city,
-                   is_admin
+                   is_admin,
+                   is_active
                 FROM users
                 ORDER BY last_name ASC'
            );
            return $stmt->fetchAll(PDO::FETCH_ASSOC);
      }
+
+      public function toggleUserActiveStatus(int $userId): ?array
+      {
+          $select = $this->db->prepare(
+              'SELECT id, is_active FROM users WHERE id = :id LIMIT 1'
+          );
+          $select->execute([':id' => $userId]);
+          $user = $select->fetch(PDO::FETCH_ASSOC);
+
+          if ($user === false) {
+              return null;
+          }
+
+          $newStatus = ((int) $user['is_active'] === 1) ? 0 : 1;
+
+          $update = $this->db->prepare(
+              'UPDATE users SET is_active = :active WHERE id = :id'
+          );
+          $update->execute([
+              ':active' => $newStatus,
+              ':id'     => $userId,
+          ]);
+
+          return [
+              'id' => (int) $userId,
+              'is_active' => $newStatus,
+          ];
+      }
 
     // ----------------------------------------------------------
     // (Private helper) Check if an email or username is already

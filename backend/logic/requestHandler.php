@@ -27,6 +27,11 @@
 //   placeOrder      – create a new order from cart items (requires login)
 //   getUserOrders   – get all orders for the current user (requires login)
 //   getOrderDetails – get detailed info for a specific order (requires login)
+//   getAllUsers      – admin: list all users
+//   toggleUserStatus – admin: activate/deactivate one user
+//   getUserOrdersAdmin   – admin: orders of a specific user
+//   getOrderDetailsAdmin – admin: details for a specific order
+//   removeOrderItem      – admin: remove one item from an order
 // ============================================================
 
 session_start();
@@ -141,6 +146,12 @@ if ($action === 'register') {
         // password_verify() compares the plain-text input against the stored hash.
         // We must NEVER compare passwords with === directly.
         if ($user !== null && password_verify($password, $user['password_hash'])) {
+
+            if (isset($user['is_active']) && (int) $user['is_active'] === 0) {
+                $response = ['status' => 'error', 'message' => 'Ihr Konto wurde deaktiviert. Bitte kontaktieren Sie den Support.'];
+                echo json_encode($response);
+                exit;
+            }
 
             // Store key info in the session so we know who is logged in
             // on future requests without hitting the database again.
@@ -259,6 +270,132 @@ if ($action === 'register') {
     } catch (Throwable $e) {
         error_log('TechShopHub getProducts error: ' . $e->getMessage());
         $message  = $debugMode ? 'getProducts Exception: ' . $e->getMessage() : 'Produkte konnten nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+} elseif ($action === 'getAllUsers') {
+
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    try {
+        $users = $userModel->getAllUsers();
+        $response = ['status' => 'success', 'users' => $users];
+    } catch (Throwable $e) {
+        error_log('TechShopHub getAllUsers error: ' . $e->getMessage());
+        $message  = $debugMode ? 'getAllUsers Exception: ' . $e->getMessage() : 'Kunden konnten nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+} elseif ($action === 'toggleUserStatus') {
+
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    $userId = (int) ($data['userId'] ?? 0);
+    if ($userId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungueltige Benutzer-ID.']);
+        exit;
+    }
+
+    if (!empty($_SESSION['user_id']) && (int) $_SESSION['user_id'] === $userId) {
+        echo json_encode(['status' => 'error', 'message' => 'Der eigene Account kann nicht deaktiviert werden.']);
+        exit;
+    }
+
+    try {
+        $updated = $userModel->toggleUserActiveStatus($userId);
+
+        if ($updated === null) {
+            $response = ['status' => 'error', 'message' => 'Benutzer nicht gefunden.'];
+        } else {
+            $response = [
+                'status' => 'success',
+                'message' => ((int) $updated['is_active'] === 1)
+                    ? 'Benutzer wurde aktiviert.'
+                    : 'Benutzer wurde deaktiviert.',
+                'user' => $updated,
+            ];
+        }
+    } catch (Throwable $e) {
+        error_log('TechShopHub toggleUserStatus error: ' . $e->getMessage());
+        $message  = $debugMode ? 'toggleUserStatus Exception: ' . $e->getMessage() : 'Status konnte nicht geaendert werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+} elseif ($action === 'getUserOrdersAdmin') {
+
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    $userId = (int) ($data['userId'] ?? 0);
+    if ($userId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungueltige Benutzer-ID.']);
+        exit;
+    }
+
+    try {
+        $orders = $orderModel->getOrdersByUserAdmin($userId);
+        $response = ['status' => 'success', 'orders' => $orders];
+    } catch (Throwable $e) {
+        error_log('TechShopHub getUserOrdersAdmin error: ' . $e->getMessage());
+        $message  = $debugMode ? 'getUserOrdersAdmin Exception: ' . $e->getMessage() : 'Bestellungen konnten nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+} elseif ($action === 'getOrderDetailsAdmin') {
+
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    $orderId = (int) ($data['orderId'] ?? 0);
+    if ($orderId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungueltige Bestellungs-ID.']);
+        exit;
+    }
+
+    try {
+        $orderData = $orderModel->getOrderDetailsAdmin($orderId);
+        $response = ['status' => 'success', 'data' => $orderData];
+    } catch (Throwable $e) {
+        error_log('TechShopHub getOrderDetailsAdmin error: ' . $e->getMessage());
+        $message  = $debugMode ? 'getOrderDetailsAdmin Exception: ' . $e->getMessage() : 'Bestelldetails konnten nicht geladen werden.';
+        $response = ['status' => 'error', 'message' => $message];
+    }
+
+} elseif ($action === 'removeOrderItem') {
+
+    if (empty($_SESSION['is_admin'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Keine Berechtigung.']);
+        exit;
+    }
+
+    $orderId = (int) ($data['orderId'] ?? 0);
+    $orderItemId = (int) ($data['orderItemId'] ?? 0);
+
+    if ($orderId <= 0 || $orderItemId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Ungueltige Parameter.']);
+        exit;
+    }
+
+    try {
+        $updatedOrder = $orderModel->removeOrderItemAdmin($orderId, $orderItemId);
+        $response = [
+            'status' => 'success',
+            'message' => 'Position wurde entfernt.',
+            'order' => $updatedOrder,
+        ];
+    } catch (Throwable $e) {
+        error_log('TechShopHub removeOrderItem error: ' . $e->getMessage());
+        $message  = $debugMode ? 'removeOrderItem Exception: ' . $e->getMessage() : 'Position konnte nicht entfernt werden.';
         $response = ['status' => 'error', 'message' => $message];
     }
 

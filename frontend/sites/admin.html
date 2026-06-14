@@ -14,72 +14,120 @@
 <main class="container-lg">
     <div id="admin-message" class="mb-3"></div>
 
-    <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
-        <h1 class="h3 mb-0">Produktverwaltung</h1>
-        <button class="btn btn-dark" type="button" data-bs-toggle="collapse" data-bs-target="#createProductCollapse"
-                aria-expanded="false" aria-controls="createProductCollapse">
-            Produkt anlegen
-        </button>
-    </div>
+    <h1 class="h3 mb-3">Admin Bereich</h1>
 
-    <section class="collapse mb-4" id="createProductCollapse">
-        <div class="card">
-            <div class="card-header fw-semibold">Neues Produkt</div>
-            <div class="card-body">
-                <form id="createProductForm">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label" for="create_category">Kategorie</label>
-                            <select id="create_category" name="category_id" class="form-select" required>
-                                <option value="1">Laptops</option>
-                                <option value="2">Headsets</option>
-                                <option value="3">PCs</option>
-                            </select>
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label" for="create_name">Name</label>
-                            <input id="create_name" name="name" class="form-control" maxlength="150" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="create_description">Beschreibung</label>
-                            <textarea id="create_description" name="description" class="form-control" rows="3" required></textarea>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="create_price">Preis</label>
-                            <input id="create_price" name="price" type="number" class="form-control" min="0" step="0.01" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="create_rating">Bewertung</label>
-                            <input id="create_rating" name="rating" type="number" class="form-control" min="0" max="5" step="0.1" value="0">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="create_image">Bild</label>
-                            <input id="create_image" name="product_image" type="file" class="form-control" accept="image/*" required>
-                        </div>
-                        <div class="col-12 d-flex align-items-center gap-3">
-                            <button class="btn btn-dark" type="submit">Produkt anlegen</button>
-                            <div id="create-message" class="flex-grow-1"></div>
-                        </div>
-                    </div>
-                </form>
+    <ul class="nav nav-tabs mb-3" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="products-tab" data-bs-toggle="tab" data-bs-target="#products-pane"
+                    type="button" role="tab" aria-controls="products-pane" aria-selected="true">Produkte</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane"
+                    type="button" role="tab" aria-controls="users-pane" aria-selected="false">Kunden</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="coupons-tab" data-bs-toggle="tab" data-bs-target="#coupons-pane"
+                    type="button" role="tab" aria-controls="coupons-pane" aria-selected="false">Gutscheine</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="adminTabsContent">
+        <section class="tab-pane fade show active" id="products-pane" role="tabpanel" aria-labelledby="products-tab">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                <h2 class="h5 mb-0">Produktverwaltung</h2>
+                <button class="btn btn-dark" type="button" data-bs-toggle="collapse" data-bs-target="#createProductCollapse"
+                        aria-expanded="false" aria-controls="createProductCollapse">
+                    Produkt anlegen
+                </button>
             </div>
-        </div>
-    </section>
 
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-dark">
-            <tr>
-                <th>Bild</th>
-                <th>Name</th>
-                <th>Kategorie</th>
-                <th>Preis</th>
-                <th>Bewertung</th>
-                <th>Aktionen</th>
-            </tr>
-            </thead>
-            <tbody id="product-table-body"></tbody>
-        </table>
+            <section class="collapse mb-4" id="createProductCollapse">
+                <div class="card">
+                    <div class="card-header fw-semibold">Neues Produkt</div>
+                    <div class="card-body">
+                        <form id="createProductForm">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label" for="create_category">Kategorie</label>
+                                    <select id="create_category" name="category_id" class="form-select" required>
+                                        <option value="1">Laptops</option>
+                                        <option value="2">Headsets</option>
+                                        <option value="3">PCs</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label" for="create_name">Name</label>
+                                    <input id="create_name" name="name" class="form-control" maxlength="150" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="create_description">Beschreibung</label>
+                                    <textarea id="create_description" name="description" class="form-control" rows="3" required></textarea>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="create_price">Preis</label>
+                                    <input id="create_price" name="price" type="number" class="form-control" min="0" step="0.01" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="create_rating">Bewertung</label>
+                                    <input id="create_rating" name="rating" type="number" class="form-control" min="0" max="5" step="0.1" value="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="create_image">Bild</label>
+                                    <input id="create_image" name="product_image" type="file" class="form-control" accept="image/*" required>
+                                </div>
+                                <div class="col-12 d-flex align-items-center gap-3">
+                                    <button class="btn btn-dark" type="submit">Produkt anlegen</button>
+                                    <div id="create-message" class="flex-grow-1"></div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>Bild</th>
+                        <th>Name</th>
+                        <th>Kategorie</th>
+                        <th>Preis</th>
+                        <th>Bewertung</th>
+                        <th>Aktionen</th>
+                    </tr>
+                    </thead>
+                    <tbody id="product-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="tab-pane fade" id="users-pane" role="tabpanel" aria-labelledby="users-tab">
+            <h2 class="h5 mb-3">Kundenverwaltung</h2>
+            <div id="users-message" class="mb-3"></div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>E-Mail</th>
+                        <th>Benutzername</th>
+                        <th>Stadt</th>
+                        <th>Status</th>
+                        <th>Aktionen</th>
+                    </tr>
+                    </thead>
+                    <tbody id="users-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="tab-pane fade" id="coupons-pane" role="tabpanel" aria-labelledby="coupons-tab">
+            <h2 class="h5 mb-2">Gutscheinverwaltung</h2>
+            <p class="text-muted mb-0">Dieser Bereich wird mit Feature 4 implementiert.</p>
+        </section>
     </div>
 </main>
 
@@ -133,6 +181,25 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
                 <button type="button" class="btn btn-dark" id="editSubmitBtn">Aenderungen speichern</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userOrdersModal" tabindex="-1" aria-labelledby="userOrdersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="userOrdersModalLabel">Bestellungen eines Kunden</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schliessen"></button>
+            </div>
+            <div class="modal-body">
+                <div id="user-orders-message" class="mb-3"></div>
+                <div id="user-orders-list" class="list-group mb-3"></div>
+                <div id="user-order-details"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schliessen</button>
             </div>
         </div>
     </div>

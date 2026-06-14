@@ -26,8 +26,13 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     payment_info VARCHAR(255) NOT NULL,
     is_admin TINYINT(1) DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration for already existing installations.
+-- Run once if the column does not exist yet:
+-- ALTER TABLE users ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1;
 
 -- ============================================================
 -- Kategorien
@@ -150,7 +155,8 @@ INSERT INTO users (
     username,
     password_hash,
     payment_info,
-    is_admin
+    is_admin,
+    is_active
 ) VALUES (
     'Herr',
     'Admin',
@@ -162,6 +168,9 @@ INSERT INTO users (
     'admin',
     '$2y$10$5mDWoOY3byIBt7MBVgPdR.TNCrZqwOCfE1Fnbs3y7l05prLpmjoJS',
     'Invoice',
+    1,
     1
 )
-ON DUPLICATE KEY UPDATE is_admin = VALUES(is_admin);
+ON DUPLICATE KEY UPDATE
+    is_admin = VALUES(is_admin),
+    is_active = VALUES(is_active);
